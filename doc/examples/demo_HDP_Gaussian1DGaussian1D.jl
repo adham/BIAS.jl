@@ -63,8 +63,8 @@ store_every = 100000
 filename    = "demo_HDP_Gaussian1DGaussian1D_"
 
 
-K_list, K_zz_dict, betas, gammas, alphas = collapsed_gibbs_sampler!(hdp, xx, zz, n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
-# da3K_list, K_zz_dict = CRF_gibbs_sampler!(hdp, xx, zz, n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
+# K_list, K_zz_dict, betas, gammas, alphas = collapsed_gibbs_sampler!(hdp, xx, zz, n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
+K_list, K_zz_dict = CRF_gibbs_sampler!(hdp, xx, zz, n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
 
 # posterior distributions
 K_hist = hist(K_list, 0.5:maximum(K_list)+0.5)[2]

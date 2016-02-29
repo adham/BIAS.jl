@@ -5,8 +5,8 @@ Adham Beyki, odinay@gmail.com
 27/10/2015
 
 TODO:
-write savesample for CRF_gibbs_sampler. r we using nn?
-resample hyper-params for CRF_gibbs_sampler
+implement save_samples for CRF
+implement resample_hyperparams for CRF
 =#
 
 ###################################################
@@ -116,7 +116,6 @@ function collapsed_gibbs_sampler!{T1, T2}(
 
 
     # constructing components
-    # TODO remove the last one and use hdp.component
     components = Array(typeof(hdp.component), hdp.KK)
     for kk = 1:hdp.KK
         components[kk] = deepcopy(hdp.component)
@@ -208,8 +207,8 @@ function collapsed_gibbs_sampler!{T1, T2}(
                 2. resample zz[jj][ii]
                 3. add x[jj][ii] to the resampled cluster
             end
-        2. resampl β
-        3. resample hyperparameters γ, α0
+        2. resample β
+        3. resample hyperparams γ, α0
         =#
 
         # sample zz[jj][ii]
@@ -253,7 +252,7 @@ function collapsed_gibbs_sampler!{T1, T2}(
                 lognormalize!(pp)
                 kk = sample(pp)
 
-                # if kk is new, we instanciate a new cluster
+                # if kk is new, we instantiate a new cluster
                 if kk == hdp.KK+1
                     println("\tcomponent $(kk) activated.")
                     push!(components, deepcopy(hdp.component))
@@ -280,7 +279,7 @@ function collapsed_gibbs_sampler!{T1, T2}(
         M = zeros(Int, n_groups, hdp.KK)
         for hh in 1:n_internals
         ##   2  ##
-        # resampling β vector using auxilary variable method
+        # resampling β vector using auxiliary variable method
         # Eq. 40, 41 Teh etal 2004
             for jj = 1:n_groups
                 for kk = 1:hdp.KK
@@ -421,9 +420,9 @@ function CRF_gibbs_sampler!{T1, T2}(
 
 
 
-        ###########################
-        # 1. resampling customers #
-        ###########################
+        ######################################
+        # 1. resampling tables for customers #
+        ######################################
         for jj = 1:n_groups
 
             n_tbls = length(kjt[jj])
@@ -437,11 +436,10 @@ function CRF_gibbs_sampler!{T1, T2}(
                 njt[jj][tbl] -= 1
 
                 # if by removing xx[jj][ii] table tji[jj][ii] becomes empty
-                # remove the table
+                # remove the table as well
                 if njt[jj][tbl] == 0
 
                     n_tbls -= 1
-                    kk = kjt[jj][tbl]
                     mm[kk] -= 1
 
                     splice!(kjt[jj], tbl)
@@ -450,9 +448,9 @@ function CRF_gibbs_sampler!{T1, T2}(
                     idx = find(x -> x>tbl, tji[jj])
                     tji[jj][idx] -= 1
 
-                    # if tji[jj][ii] (which we have removed because xx[jj][ii] was the only customer sitting
-                    # at it) is the only table dish kk is being served and by removing it no other table
-                    # serves dish kk, remove dish kk from menue.
+                    # if tji[jj][ii] (which we have removed it) is the only table which is
+                    # serving dish kk and by removing it no other table serves dish kk,
+                    # remove dish kk from menu
                     if mm[kk] == 0
 
                         hdp.KK -= 1
@@ -476,12 +474,11 @@ function CRF_gibbs_sampler!{T1, T2}(
                     pp[tbl] = log(njt[jj][tbl]) + logpredictive(components[kk], xx[jj][ii])
                 end
                 pp[n_tbls+1] = log(hdp.aa) + logpredictive(hdp.component, xx[jj][ii])
-                #TODO
-                # check the last line, shouldnt it be log(a)
 
                 lognormalize!(pp)
                 tbl = sample(pp)
 
+                # if a new table is selected, draw the dish for the new table
                 if tbl == n_tbls+1
 
                     n_tbls += 1
@@ -492,7 +489,7 @@ function CRF_gibbs_sampler!{T1, T2}(
                     for kk = 1:hdp.KK
                         pp[kk] = log(mm[kk]) + logpredictive(components[kk], xx[jj][ii])
                     end
-                    pp[kk+1] = log(hdp.gg) + logpredictive(hdp.component, xx[jj][ii])
+                    pp[hdp.KK+1] = log(hdp.gg) + logpredictive(hdp.component, xx[jj][ii])
 
                     lognormalize!(pp)
                     kk = sample(pp)
@@ -531,8 +528,10 @@ function CRF_gibbs_sampler!{T1, T2}(
 
                 tidx = find(x -> x==tbl, tji[jj])
 
+                # if tbl is the only table serving dish kk, by removing it we need to
+                # remove the dish from the menu
+
                 if mm[kk] == 0
-                    # either delete the entire component at once
                     hdp.KK -= 1
                     splice!(mm, kk)
                     splice!(components, kk)
@@ -543,21 +542,24 @@ function CRF_gibbs_sampler!{T1, T2}(
 
                         idx = find(x -> x>kk, kjt[ll])
                         kjt[ll][idx] -= 1
-                    end
+                   end
 
-                else
-                    # or remove the data points one by one
+               else
+                    # otherwise we need to remove the customers who were sitting at table tbl in
+                    # jj, having dish kk, one by one
                     for ll in tidx
-                        delitem!(components[kk], xx[jj][ll])
+                       delitem!(components[kk], xx[jj][ll])
                     end
-                end
+               end
 
+
+                # resampling the dish
                 pp = zeros(Float64, hdp.KK+1)
                 for kk = 1:hdp.KK
+                    pp[kk] = log(mm[kk])
                     for ll in tidx
                         pp[kk] += logpredictive(components[kk], xx[jj][ll])
                     end
-                    pp[kk] += log(mm[kk])
                 end
                 pp[hdp.KK+1] += log(hdp.gg)
                 for ll in tidx
@@ -582,6 +584,7 @@ function CRF_gibbs_sampler!{T1, T2}(
             end # n_group_j[jj]
         end # n_groups
 
+
         # TODO
         # resample hyperparams
 
@@ -591,7 +594,8 @@ function CRF_gibbs_sampler!{T1, T2}(
             KK_list[i] = hdp.KK
             KK_zz_dict[hdp.KK] = deepcopy(zz)
             if i % store_every == 0
-                # TODO save function
+                # TODO
+                # save function
             end
         end
 

@@ -34,7 +34,7 @@ function storesample{T}(
         n_burnins::Int, n_lags::Int, sample_n::Int,
         filename::ASCIIString)
 
-    
+
     println("\nstoring on disk...\n")
     if endswith(filename, "_")
         dummy_filename = string(filename, sample_n, ".jld")
@@ -62,7 +62,7 @@ end
 
 function sample_hyperparam!(rcrp::RCRP, tt::Int, n::Int, KK::Int, iters::Int)
 
-    @inbounds for n = 1:iters
+    for n = 1:iters
         eta = rand(Distributions.Beta(rcrp.aa[tt]+1, n))
 
         rr = (rcrp.a1+KK-1) / (n*(rcrp.a2-log(eta)))
@@ -110,7 +110,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
     # construct the observation count
     nn = zeros(Int, TT, rcrp.KK)
     for tt = 1:TT
-        @inbounds for ii = 1:N_t[tt]
+        for ii = 1:N_t[tt]
             nn[tt, zz[tt][ii]] += 1
         end
     end
@@ -151,7 +151,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
     ###############################
     # constructing the components #
     ###############################
-    # parameters (dishes) of the first epoch are drawn from G_0, but @inbounds for
+    # parameters (dishes) of the first epoch are drawn from G_0, but for
     # epochs t in [2, KK], the parameters are either an evolved from t-1
     # or drawn from G_0
     components = Array(Vector{typeof(rcrp.component)}, TT)
@@ -185,7 +185,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
     ############################
     n_iterations = n_burnins + (n_samples)*(n_lags+1)
 
-    @inbounds for iteration = 1:n_iterations
+    for iteration = 1:n_iterations
 
         # verbose
         if iteration < n_burnins
@@ -208,7 +208,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
 
 
         # iterating over observations
-        @inbounds for ii = 1:N_t[tt]
+        for ii = 1:N_t[tt]
 
 
             kk  = zz[tt][ii]                # cluster id
@@ -226,7 +226,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
                 zz2table[tt, idx] -= 1
 
                 if sum(nn[:, kk]) == 0
-                    @inbounds for tt_ = 1:TT
+                    for tt_ = 1:TT
 
                         k_t = zz2table[tt_, kk]
                         if k_t != 0
@@ -295,7 +295,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
                 nn = add_column(nn)
                 zz2table = add_column(zz2table)
                 rcrp.KK += 1
-                
+
                 K_t = maximum(zz2table[tt, :])
                 zz2table[tt, kk] = K_t + 1
             end
@@ -304,7 +304,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
             nn[tt, kk] += 1
             additem!(components[tt][zz2table[tt, kk]], xx[tt][ii])
             log_likelihood += loglikelihood(components[tt][zz2table[tt, kk]], xx[tt][ii])
-        
+
         end # iterating over observations
 
 
@@ -326,7 +326,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
 
                 if sum(nn[:, kk]) == 0
 
-                    @inbounds for tt_ = 1:TT
+                    for tt_ = 1:TT
                         idx = find(x -> x>kk, zz[tt_])
                         zz[tt_][idx] -= 1
 
@@ -362,10 +362,10 @@ function RCRP_gibbs_sampler!{T1, T2}(
 
         L2 = sum(log(collect(0 : N_t[tt+1]-1) + N_t[tt] + rcrp.aa[tt]))
 
-        @inbounds for tt = 2:TT-1
+        for tt = 2:TT-1
 
             # evolving the dishes at tables that are inherited from previous epoch
-            @inbounds for kk = 1:rcrp.KK
+            for kk = 1:rcrp.KK
                 if zz2table[tt-1, kk] != 0
                     if zz2table[tt, kk] != 0
                         components[tt][zz2table[tt, kk]] = evolve(components[tt-1][zz2table[tt-1, kk]])
@@ -378,11 +378,11 @@ function RCRP_gibbs_sampler!{T1, T2}(
                     end
                 end
             end
-            
+
 
 
             # iterating over observations
-            @inbounds for ii = 1:N_t[tt]
+            for ii = 1:N_t[tt]
 
                 kk = zz[tt][ii]                     # cluster id
                 k_t = zz2table[tt, kk]              # table id
@@ -400,7 +400,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
                     zz2table[tt, idx] -= 1
 
                     if sum(nn[:, kk]) == 0
-                        @inbounds for tt_ = 1:TT
+                        for tt_ = 1:TT
 
                             k_t = zz2table[tt_, kk]
                             if k_t != 0
@@ -463,7 +463,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
                 lognormalize!(pp)
                 kk = sample(pp)
 
-            
+
                 if kk == rcrp.KK+1
                     push!(components[tt], deepcopy(rcrp.component))
                     nn = add_column(nn)
@@ -498,7 +498,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
 
                     if sum(nn[:, kk]) == 0
 
-                        @inbounds for tt_ = 1:TT
+                        for tt_ = 1:TT
                             idx = find(x -> x>kk, zz[tt_])
                             zz[tt_][idx] -= 1
 
@@ -526,7 +526,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
                     nn = add_column(nn)
                     zz2table = add_column(zz2table)
 
-                    @inbounds for tt_ = tt+1:TT
+                    for tt_ = tt+1:TT
                         nn[tt_, rcrp.KK+1] = nn[tt_, kk]
                         zz2table[tt_, rcrp.KK+1] = zz2table[tt_, kk]
 
@@ -559,7 +559,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
         tt = TT
 
         # evolving the dishes at tables that are inherited from previous epoch
-        @inbounds for kk = 1:rcrp.KK
+        for kk = 1:rcrp.KK
             if zz2table[tt-1, kk] != 0
                 if zz2table[tt, kk] != 0
                     components[tt][zz2table[tt, kk]] = evolve(components[tt-1][zz2table[tt-1, kk]])
@@ -574,7 +574,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
         end
 
         # iterating over observations
-        @inbounds for ii = 1:N_t[TT]
+        for ii = 1:N_t[TT]
 
             kk = zz[tt][ii]
             k_t = zz2table[tt, kk]
@@ -594,7 +594,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
                     zz2table = del_column(zz2table, kk)
                     rcrp.KK -= 1
 
-                    @inbounds for tt_ = 1:TT
+                    for tt_ = 1:TT
                         idx = find(x -> x>kk, zz[tt_])
                         zz[tt_][idx] -= 1
                     end
@@ -625,10 +625,10 @@ function RCRP_gibbs_sampler!{T1, T2}(
                 nn = add_column(nn)
                 zz2table = add_column(zz2table)
                 rcrp.KK += 1
-                
+
                 K_t = maximum(zz2table[tt, :])
                 zz2table[tt, kk] = K_t + 1
-            end            
+            end
 
             zz[tt][ii] = kk
             nn[tt, kk] += 1
@@ -744,7 +744,7 @@ function posterior{T1, T2}(
 
     pos_components = Array(Vector{typeof(posterior(rcrp.component))}, TT)
     for tt = 1:TT
-        K_t = maximum(zz2table[tt, :])        
+        K_t = maximum(zz2table[tt, :])
         pos_components[tt] = Array(typeof(posterior(rcrp.component)), K_t)
         for k_t = 1:K_t
             pos_components[tt][k_t] = posterior(components[tt][k_t])

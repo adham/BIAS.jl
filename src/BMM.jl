@@ -52,7 +52,7 @@ function collapsed_gibbs_sampler!{T1, T2}(
     n_burnins::Int, n_lags::Int, n_samples::Int,
     store_every::Int=100, filename::ASCIIString="BMM_results_")
 
-    
+
 
     n_iterations   = n_burnins + (n_samples)*(n_lags+1)
     NN             = length(xx)
@@ -91,7 +91,7 @@ function collapsed_gibbs_sampler!{T1, T2}(
 
 
         tic()
-        @inbounds for ii = randperm(NN)
+        for ii = randperm(NN)
 
             # 1
             # remove the datapoint
@@ -131,7 +131,7 @@ end
 
 
 function posterior{T1, T2}(bmm::BMM{T1}, xx::Vector{T2}, zz::Vector{Int})
-    
+
     components = Array(typeof(bmm.component), bmm.KK)
     for kk = 1:bmm.KK
         components[kk] = deepcopy(bmm.component)
