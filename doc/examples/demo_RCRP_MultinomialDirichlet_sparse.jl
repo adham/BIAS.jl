@@ -1,8 +1,7 @@
 #=
 demo_RCRP_MultinomialDirichlet_sparse
 
-demo for Recurrent Chinese Restaurant Process with
-MultinomialDIrichlet conjugate component.
+demo for Recurrent Chinese Restaurant Process with MultinomialDIrichlet conjugate component.
 
 15/01/2015
 Adham Beyki, odinay@gmail.com
@@ -16,10 +15,10 @@ srand(100)
 ## --- synthesizing the data --- ##
 
 TT      = 10
-N_t     = fill(500, TT)
+N_t     = fill(1000, TT)
 true_aa = 0.8
 
-true_nn, true_zz = BIAS.gen_RCRP_data(N_t, true_aa)
+true_nn, true_zz, true_KK = BIAS.gen_RCRP_data(N_t, true_aa)
 
 true_KK    = size(true_nn, 2)
 n_tokens   = 25
@@ -59,7 +58,7 @@ rcrp = RCRP(q0, init_KK, rcrp_aa, TT, rcrp_a1, rcrp_a2)
 # sampling
 zz = Array(Vector{Int64}, TT)
 for tt = 1:TT
-  zz[tt] = rand(1:rcrp.K, N_t[tt])
+  zz[tt] = rand(1:rcrp.KK, N_t[tt])
 end
 
 n_burnins   = 10
