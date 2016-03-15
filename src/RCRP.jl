@@ -2,7 +2,7 @@
 #=
 RCRP.jl
 
-11/26/2015
+115/03/2016
 Adham Beyki, odinay@gmail.com
 =#
 
@@ -27,13 +27,14 @@ function Base.show(io::IO, rcrp::RCRP)
     println(io, "Recurrent Chinese Restaurant Process with $(rcrp.KK) $(typeof(rcrp.component)) components")
 end
 
-function storesample{T}(
-        rcrp::RCRP{T},
-        KK_list::Vector{Int},
-        KK_zz_dict::Dict{Int, Vector{Vector{Int}}},
-        n_burnins::Int, n_lags::Int, sample_n::Int,
-        filename::ASCIIString)
 
+
+function storesample{T}(
+    rcrp::RCRP{T},
+    KK_list::Vector{Int},
+    KK_dict::Dict{Int, Vector{Vector{Int}}},
+    n_burnins::Int, n_lags::Int, sample_n::Int,
+    filename::ASCIIString)
 
     println("\nstoring on disk...\n")
     if endswith(filename, "_")
@@ -45,19 +46,10 @@ function storesample{T}(
     JLD.save(dummy_filename,
         "rcrp", rcrp,
         "KK_list", KK_list,
-        "KK_zz_dict", KK_zz_dict,
+        "KK_dict", KK_dict,
         "n_burnins", n_burnins, "n_lags", n_lags, "sample_n", sample_n)
 end
 
-
-
-function evolve{T}(phi::T)
-    ## given phi[t, k] it returns phi[t+1, k]
-    ## p(phi[t+1, k] | phi[t, k])
-
-    evolved_phi = deepcopy(phi)
-    evolved_phi
-end
 
 
 function sample_hyperparam!(rcrp::RCRP, tt::Int, n::Int, KK::Int, iters::Int)
@@ -77,6 +69,7 @@ function sample_hyperparam!(rcrp::RCRP, tt::Int, n::Int, KK::Int, iters::Int)
 end
 
 
+
 function RCRP_gibbs_sampler!{T1, T2}(
     rcrp::RCRP{T1},
     xx::Vector{Vector{T2}},
@@ -85,29 +78,17 @@ function RCRP_gibbs_sampler!{T1, T2}(
     sample_hyperparam::Bool=true,  n_internals::Int=10,
     store_every::Int=100, filename::ASCIIString="RCRP_results_",
     KK_list::Vector{Int}=Int[],
-    KK_zz_dict::Dict{Int, Vector{Vector{Int}}}=Dict{Int, Vector{Vector{Int}}}())
+    KK_dict::Dict{Int, Vector{Vector{Int}}}=Dict{Int, Vector{Vector{Int}}}())
 
-    # number of epochs
+
+
+
     TT = length(xx)
-
-    # number of observations in epoch tt
     N_t = Array(Int, TT)
     for tt = 1:TT
         N_t[tt] = length(xx[tt])
     end
 
-
-
-    if length(KK_list) == 0
-        KK_list = zeros(Int, n_samples)
-        KK_zz_dict = Dict{Int, Vector{Vector{Int}}}()
-    else
-        KK_list = vcat(KK_list, zeros(Int, n_samples))
-    end
-
-
-
-    # construct the observation count
     nn = zeros(Int, TT, rcrp.KK)
     for tt = 1:TT
         for ii = 1:N_t[tt]
@@ -116,11 +97,21 @@ function RCRP_gibbs_sampler!{T1, T2}(
     end
 
 
+    if length(KK_list) == 0
+        n_samples_old = 0
+        KK_list = zeros(Int, n_samples)
+        KK_dict = Dict{Int, Vector{Vector{Int}}}()
+    else
+        n_samples_old = length(KK_list)        
+        KK_list = vcat(KK_list, zeros(Int, n_samples))
+    end
+
+
     # make sure there is no inactive chain throughout all epochs
     kk = 1
     while kk <= rcrp.KK
         if sum(nn[:, kk]) == 0
-            println("\tcomponent $kk has become inactive")
+            println("\tcomponent $kk is inactive")
             nn = del_column(nn, kk)
 
             for tt = 1:TT
@@ -134,44 +125,19 @@ function RCRP_gibbs_sampler!{T1, T2}(
     end
 
 
-    # construct the table indices
-    # zz2table[tt, kk] returns the table index of chain kk at epoch tt
-    zz2table = zeros(Int, TT, rcrp.KK)
-    k_t = 1
+
+    ## initializing the model ##
+    components = Array(typeof(rcrp.component), rcrp.KK)
     for kk = 1:rcrp.KK
-        for tt = 1:TT
-            if length(find(x -> x==kk, zz[tt])) != 0
-                zz2table[tt, kk] = maximum(zz2table[tt, :]) + 1
-            end
-        end
+        components[kk] = deepcopy(rcrp.component)
     end
 
-
-
-    ###############################
-    # constructing the components #
-    ###############################
-    # parameters (dishes) of the first epoch are drawn from G_0, but for
-    # epochs t in [2, KK], the parameters are either an evolved from t-1
-    # or drawn from G_0
-    components = Array(Vector{typeof(rcrp.component)}, TT)
-
-    for tt = 1:TT
-        K_t = maximum(zz2table[tt, :])
-        components[tt] = Array(typeof(rcrp.component), K_t)
-        for k_t = 1:K_t
-            components[tt][k_t] = deepcopy(rcrp.component)
-        end
-    end
-
-    # Now add the observations
     log_likelihood = 0.0
     tic()
     for tt = 1:TT
         for ii = 1:N_t[tt]
-            k_t = zz2table[tt, zz[tt][ii]]
-            additem!(components[tt][k_t], xx[tt][ii])
-            log_likelihood += loglikelihood(components[tt][k_t], xx[tt][ii])
+            additem!(components[zz[tt][ii]], xx[tt][ii])
+            log_likelihood += loglikelihood(components[zz[tt][ii]], xx[tt][ii])
         end
     end
     KK_list[1] = rcrp.KK
@@ -196,67 +162,34 @@ function RCRP_gibbs_sampler!{T1, T2}(
 
 
 
-        #####################
-        ##     epoch 1     ##
-        #####################
+        ##########################
+        ##     first epoch      ##
+        ##########################
+        tt = 1
         log_likelihood = 0.0
         tic()
-        tt = 1
 
-        ## L2 is used in computing p(z_{t+1} | z{t})
         L2 = sum(log(collect(0 : N_t[tt+1]-1) + N_t[tt] + rcrp.aa[tt]))
+        for ii = randperm(N_t[tt])
 
-
-        # iterating over observations
-        for ii = 1:N_t[tt]
-
-
-            kk  = zz[tt][ii]                # cluster id
-            k_t = zz2table[tt, kk]          # table id
-
-            # remove the observation
-            delitem!(components[tt][k_t], xx[tt][ii])
+            kk  = zz[tt][ii]
+            delitem!(components[kk], xx[tt][ii])
             nn[tt, kk] -= 1
 
-            if nn[tt, kk] == 0
-                zz2table[tt, kk] = 0
-                splice!(components[tt], k_t)
-
-                idx = find(x -> x>k_t, zz2table[tt, :])
-                zz2table[tt, idx] -= 1
-
-                if sum(nn[:, kk]) == 0
-                    for tt_ = 1:TT
-
-                        k_t = zz2table[tt_, kk]
-                        if k_t != 0
-                            splice!(components[tt_], k_t)
-                            idx = find(x -> x>k_t, zz2table[tt, :])
-                            zz2table[tt_, idx] -= 1
-                            zz2table[tt_, kk] = 0
-                        end
-
-                        idx = find(x -> x>kk, zz[tt_])
-                        zz[tt_][idx] -= 1
-
-                    end
-
-                    nn = del_column(nn, kk)
-                    zz2table = del_column(zz2table, kk)
-                    rcrp.KK -= 1
+            if sum(nn[:, kk]) == 0
+                for tt_ = 1:TT
+                    idx = find(x -> x>kk, zz[tt_])
+                    zz[tt_][idx] -= 1
                 end
+
+                splice!(components, kk)
+                nn = del_column(nn, kk)
+                rcrp.KK -= 1
             end
 
 
-
-            ##########################
-            ##    resampling kk    ##
-            ##########################
-
-            kk_idx_precur = find(x -> x>0, zz2table[tt, :])
-
-            ## compute p(z_{t+1} | z_t)
-            kk_idx_curnex = find(x -> x>0, sum(zz2table[tt:tt+1, :], 1))
+            kk_idx_precur = find(x -> x>0, nn[tt, :])
+            kk_idx_curnex = find(x -> x>0, sum(nn[tt:tt+1, :], 1))
             KK_curnex = length(kk_idx_curnex) + 1
 
             L1 = zeros(Float64, rcrp.KK)
@@ -265,173 +198,71 @@ function RCRP_gibbs_sampler!{T1, T2}(
             end
 
 
+            # resample kk
             pp = fill(-Inf, rcrp.KK+1)
             for kk in kk_idx_precur
                 L1_kk_old = L1[kk]
                 L1[kk] = sum(log(collect(0:nn[tt+1, kk]-1) + nn[tt, kk] + 1 + rcrp.aa[tt]/KK_curnex))
 
-                pp[kk] = log(nn[tt, kk]) + logpredictive(components[tt][zz2table[tt, kk]], xx[tt][ii]) + sum(L1) - L2
+                pp[kk] = log(nn[tt, kk]) + logpredictive(components[kk], xx[tt][ii]) + sum(L1) - L2
 
                 L1[kk] = L1_kk_old
             end
             pp[rcrp.KK+1] = log(rcrp.aa[tt]) + logpredictive(rcrp.component, xx[tt][ii]) + sum(L1) - L2
 
-
-            # for kk in kk_idx_curnex
-            #     if !(kk in kk_idx_precur)
-            #         L1_kk_old = L1[kk]
-            #         L1[kk] = sum(log(collect(0:nn[tt+1, kk]-1) + nn[tt, kk] + 1 + rcrp.aa[tt]/KK_curnex))
-            #         pp[kk] = sum(L1) - L2
-            #         L1[kk] = L1_kk_old
-            #     end
-            # end
-
             lognormalize!(pp)
             kk = sample(pp)
 
-
             if kk == rcrp.KK+1
-                push!(components[tt], deepcopy(rcrp.component))
+                push!(components, deepcopy(rcrp.component))
                 nn = add_column(nn)
-                zz2table = add_column(zz2table)
                 rcrp.KK += 1
-
-                K_t = maximum(zz2table[tt, :])
-                zz2table[tt, kk] = K_t + 1
             end
 
             zz[tt][ii] = kk
             nn[tt, kk] += 1
-            additem!(components[tt][zz2table[tt, kk]], xx[tt][ii])
-            log_likelihood += loglikelihood(components[tt][zz2table[tt, kk]], xx[tt][ii])
+            additem!(components[kk], xx[tt][ii])
+            log_likelihood += loglikelihood(components[kk], xx[tt][ii])
 
-        end # iterating over observations
+        end # ii
 
-
-        #############################
-        ## cleaning the restaurant ##
-        #############################
-        # remove empty tables and their dishes so they don't get copied
-        # to the next day's restaurant
-
-        kk = 1
-        while kk <= rcrp.KK
-            if nn[tt, kk] == 0
-                if zz2table[tt, kk] != 0
-                    splice!(components[tt], zz2table[tt, kk])
-                    idx = find(x -> x>zz2table[tt, kk], zz2table[tt, :])
-                    zz2table[tt, idx] -= 1
-                    zz2table[tt, kk] = 0
-                end
-
-                if sum(nn[:, kk]) == 0
-
-                    for tt_ = 1:TT
-                        idx = find(x -> x>kk, zz[tt_])
-                        zz[tt_][idx] -= 1
-
-                        k_t = zz2table[tt_, kk]
-                        if k_t != 0
-                            splice!(components[tt_], k_t)
-                            idx = find(x -> x>k_t, zz2table[tt_, :])
-                            zz2table[tt_, idx] -= 1
-                            zz2table[tt_, kk] = 0
-                        end
-                    end
-
-                    nn = del_column(nn, kk)
-                    zz2table = del_column(zz2table, kk)
-                    rcrp.KK -= 1
-                end
-            end
-            kk += 1
-        end
-
-
-        ## resampling hyper-parameter
         if sample_hyperparam
-            K_t = length(findnz(zz2table[tt, :])[1])
+            K_t = length(findnz(nn[tt, :])[1])
             sample_hyperparam!(rcrp, tt, N_t[tt], K_t, n_internals)
         end
 
 
 
-        ########################################
-        ####### epochs between 2 and T-1 #######
-        ########################################
 
-        L2 = sum(log(collect(0 : N_t[tt+1]-1) + N_t[tt] + rcrp.aa[tt]))
-
+        #########################
+        ## epochs 2 < tt < T-1 ##
+        #########################
         for tt = 2:TT-1
 
-            # evolving the dishes at tables that are inherited from previous epoch
-            for kk = 1:rcrp.KK
-                if zz2table[tt-1, kk] != 0
-                    if zz2table[tt, kk] != 0
-                        components[tt][zz2table[tt, kk]] = evolve(components[tt-1][zz2table[tt-1, kk]])
-                        components[tt][zz2table[tt, kk]].nn = nn[tt, kk]
-                    else
-                        K_t = maximum(zz2table[tt, :])
-                        push!(components[tt], evolve(components[tt-1][zz2table[tt-1, kk]]))
-                        zz2table[tt, kk] = K_t + 1
-                        components[tt][zz2table[tt, kk]].nn = 0
-                    end
-                end
-            end
 
+            L2 = sum(log(collect(0 : N_t[tt+1]-1) + N_t[tt] + rcrp.aa[tt]))
 
+            for ii = randperm(N_t[tt])
 
-            # iterating over observations
-            for ii = 1:N_t[tt]
-
-                kk = zz[tt][ii]                     # cluster id
-                k_t = zz2table[tt, kk]              # table id
-
-
-                # remove the observation
-                delitem!(components[tt][k_t], xx[tt][ii])
+                kk = zz[tt][ii]
+                delitem!(components[kk], xx[tt][ii])
                 nn[tt, kk] -= 1
 
-                if nn[tt, kk] == 0 && nn[tt-1, kk] == 0
-                    zz2table[tt, kk] = 0
-                    splice!(components[tt], k_t)
-
-                    idx = find(x -> x>k_t, zz2table[tt, :])
-                    zz2table[tt, idx] -= 1
-
-                    if sum(nn[:, kk]) == 0
-                        for tt_ = 1:TT
-
-                            k_t = zz2table[tt_, kk]
-                            if k_t != 0
-                                splice!(components[tt_], k_t)
-                                idx = find(x -> x>k_t, zz2table[tt, :])
-                                zz2table[tt_, idx] -= 1
-                                zz2table[tt_, kk] = 0
-                            end
-
-                            idx = find(x -> x>kk, zz[tt_])
-                            zz[tt_][idx] -= 1
-
-                        end
-
-                        nn = del_column(nn, kk)
-                        zz2table = del_column(zz2table, kk)
-                        rcrp.KK -= 1
+                if sum(nn[:, kk]) == 0
+                    for tt_ = 1:TT
+                        idx = find(x -> x>kk, zz[tt_])
+                        zz[tt_][idx] -= 1
                     end
+
+                    splice!(components, kk)
+                    nn = del_column(nn, kk)
+                    rcrp.KK -= 1
                 end
 
 
-                ##########################
-                ##    resampling kk    ##
-                ##########################
 
-
-                kk_idx_precur = find(x -> x>0, sum(zz2table[tt-1:tt, :], 1))
-
-
-                # compute p(z_{t+1} | z_t)
-                kk_idx_curnex = find(x -> x>0, sum(zz2table[tt-1:tt+1, :], 1))
+                kk_idx_precur = find(x -> x>0, sum(nn[tt-1:tt, :], 1))
+                kk_idx_curnex = find(x -> x>0, sum(nn[tt-1:tt+1, :], 1))
                 KK_curnex = length(kk_idx_curnex) + 1
 
                 L1 = zeros(Float64, rcrp.KK)
@@ -439,180 +270,101 @@ function RCRP_gibbs_sampler!{T1, T2}(
                     L1[kk] = sum(log(collect(0:nn[tt+1, kk]-1) + nn[tt, kk] + rcrp.aa[tt]/KK_curnex))
                 end
 
-
+                # resample kk
                 pp = fill(-Inf, rcrp.KK+1)
                 for kk in kk_idx_precur
                     L1_kk_old = L1[kk]
                     L1[kk] = sum(log(collect(0:nn[tt+1, kk]-1) + nn[tt, kk] + 1 + rcrp.aa[tt]/KK_curnex))
 
-                    pp[kk] = log(nn[tt-1, kk] + nn[tt, kk]) + logpredictive(components[tt][zz2table[tt, kk]], xx[tt][ii]) + sum(L1) - L2
+                    pp[kk] = log(nn[tt-1, kk] + nn[tt, kk]) + logpredictive(components[kk], xx[tt][ii]) + sum(L1) - L2
 
                     L1[kk] = L1_kk_old
                 end
                 pp[rcrp.KK+1] = log(rcrp.aa[tt]) + logpredictive(rcrp.component, xx[tt][ii]) + sum(L1) - L2
-
-                # for kk in kk_idx_curnex
-                #     if !(kk in kk_idx_precur)
-                #         L1_kk_old = L1[kk]
-                #         L1[kk] = sum(log(collect(0:nn[tt+1, kk]-1) + nn[tt, kk] + 1 + rcrp.aa[tt]/KK_curnex))
-                #         pp[kk] = sum(L1) - L2
-                #         L1[kk] = L1_kk_old
-                #     end
-                # end
 
                 lognormalize!(pp)
                 kk = sample(pp)
 
 
                 if kk == rcrp.KK+1
-                    push!(components[tt], deepcopy(rcrp.component))
+                    push!(components, deepcopy(rcrp.component))
                     nn = add_column(nn)
-                    zz2table = add_column(zz2table)
                     rcrp.KK += 1
-
-                    K_t = maximum(zz2table[tt, :])
-                    zz2table[tt, kk] = K_t + 1
                 end
 
                 zz[tt][ii] = kk
                 nn[tt, kk] += 1
-                additem!(components[tt][zz2table[tt, kk]], xx[tt][ii])
-                log_likelihood += loglikelihood(components[tt][zz2table[tt, kk]], xx[tt][ii])
-            end # iterating over observations
+                additem!(components[kk], xx[tt][ii])
+                log_likelihood += loglikelihood(components[kk], xx[tt][ii])
+            end # ii
 
-            # removing empty tables and their dishes
-            kk = 1
-            while kk <= rcrp.KK
-
-                if nn[tt, kk] == 0
-
-                    # remove any table which has no customer so it
-                    # doesn't get copied to the next restaurant.
-                    # Remove its dish too.
-                    if zz2table[tt, kk] != 0
-                        splice!(components[tt], zz2table[tt, kk])
-                        idx = find(x -> x>zz2table[tt, kk], zz2table[tt, :])
-                        zz2table[tt, idx] -= 1
-                        zz2table[tt, kk] = 0
-                    end
-
-                    if sum(nn[:, kk]) == 0
-
-                        for tt_ = 1:TT
-                            idx = find(x -> x>kk, zz[tt_])
-                            zz[tt_][idx] -= 1
-
-                            k_t = zz2table[tt_, kk]
-                            if k_t != 0
-                                splice!(components[tt_], k_t)
-                                idx = find(x -> x>k_t, zz2table[tt_, :])
-                                zz2table[tt_, idx] -= 1
-                                zz2table[tt_, kk] = 0
-                            end
-                        end
-
-                        nn = del_column(nn, kk)
-                        zz2table = del_column(zz2table, kk)
-                        rcrp.KK -= 1
-                    end
-                end
-                kk += 1
-            end
 
             # if table kk is empty at time t, treat table kk at time t+1 as a new cluster
             kk = 1
             while kk <= rcrp.KK
-                if zz2table[tt, kk] == 0 && zz2table[tt+1, kk] != 0 && sum(zz2table[1:tt, kk]) != 0
+                if nn[tt, kk] == 0 && nn[tt+1, kk] != 0 && sum(nn[1:tt, kk]) != 0
+
+                    push!(components, deepcopy(rcrp.component))
                     nn = add_column(nn)
-                    zz2table = add_column(zz2table)
 
                     for tt_ = tt+1:TT
-                        nn[tt_, rcrp.KK+1] = nn[tt_, kk]
-                        zz2table[tt_, rcrp.KK+1] = zz2table[tt_, kk]
-
-                        nn[tt_, kk] = 0
-                        zz2table[tt_, kk] = 0
-
                         idx = find(x -> x==kk, zz[tt_])
                         zz[tt_][idx] = rcrp.KK+1
-                    end
+                        
+                        for idid in idx
+                            delitem!(components[kk], xx[tt_][idid])
+                            additem!(components[rcrp.KK+1], xx[tt_][idid])                            
+                        end
 
+                        nn[tt_, rcrp.KK+1] = nn[tt_, kk]
+                        nn[tt_, kk] = 0
+                    end
                     rcrp.KK += 1
                 end
                 kk += 1
             end
 
 
-            ## resampling hyper-parameter
-
             if sample_hyperparam
-                K_t = length(findnz(zz2table[tt, :])[1])
+                K_t = length(findnz(nn[tt, :])[1])
                 sample_hyperparam!(rcrp, tt, N_t[tt], K_t, n_internals)
             end
-        end
+
+        end # tt
 
 
-        ####################################
-        ############ last epoch ############
-        ####################################
 
+        ########################
+        ##     last epoch     ##
+        ########################
         tt = TT
 
-        # evolving the dishes at tables that are inherited from previous epoch
-        for kk = 1:rcrp.KK
-            if zz2table[tt-1, kk] != 0
-                if zz2table[tt, kk] != 0
-                    components[tt][zz2table[tt, kk]] = evolve(components[tt-1][zz2table[tt-1, kk]])
-                    components[tt][zz2table[tt, kk]].nn = nn[tt, kk]
-                else
-                    KK_curr = maximum(zz2table[tt, :])
-                    push!(components[tt], evolve(components[tt-1][zz2table[tt-1, kk]]))
-                    zz2table[tt, kk] = KK_curr + 1
-                    components[tt][zz2table[tt, kk]].nn = 0
-                end
-            end
-        end
-
-        # iterating over observations
-        for ii = 1:N_t[TT]
+        for ii = randperm(N_t[tt])
 
             kk = zz[tt][ii]
-            k_t = zz2table[tt, kk]
 
-            delitem!(components[tt][k_t], xx[tt][ii])
+            delitem!(components[kk], xx[tt][ii])
             nn[tt, kk] -= 1
 
-            if nn[tt, kk] == 0 && nn[tt-1, kk] == 0
-                zz2table[tt, kk] = 0
-                splice!(components[tt], k_t)
-
-                idx = find(x -> x>k_t, zz2table[tt, :])
-                zz2table[tt, idx] -= 1
-
-                if sum(nn[:, kk]) == 0
-                    nn = del_column(nn, kk)
-                    zz2table = del_column(zz2table, kk)
-                    rcrp.KK -= 1
-
-                    for tt_ = 1:TT
-                        idx = find(x -> x>kk, zz[tt_])
-                        zz[tt_][idx] -= 1
-                    end
+            if sum(nn[:, kk]) == 0
+                for tt_ = 1:TT
+                    idx = find(x -> x>kk, zz[tt_])
+                    zz[tt_][idx] -= 1
                 end
+
+                splice!(components, kk)
+                nn = del_column(nn, kk)
+                rcrp.KK -= 1
             end
 
 
 
-            ##########################
-            ##    resampling kk    ##
-            ##########################
+            kk_idx_precur = find(x -> x>0, sum(nn[tt-1:tt, :], 1))
 
-            kk_idx_precur = find(x -> x>0, sum(zz2table[tt-1:tt, :], 1))
-
+            # resdample kk
             pp = fill(-Inf, rcrp.KK+1)
-
             for kk in kk_idx_precur
-                pp[kk] = log(nn[tt-1, kk] + nn[tt, kk]) + logpredictive(components[tt][zz2table[tt, kk]], xx[tt][ii])
+                pp[kk] = log(nn[tt-1, kk] + nn[tt, kk]) + logpredictive(components[kk], xx[tt][ii])
             end
             pp[rcrp.KK+1] = log(rcrp.aa[tt]) + logpredictive(rcrp.component, xx[tt][ii])
 
@@ -620,89 +372,49 @@ function RCRP_gibbs_sampler!{T1, T2}(
             kk = sample(pp)
 
 
-            if kk == rcrp.KK+1
-                push!(components[tt], deepcopy(rcrp.component))
-                nn = add_column(nn)
-                zz2table = add_column(zz2table)
-                rcrp.KK += 1
 
-                K_t = maximum(zz2table[tt, :])
-                zz2table[tt, kk] = K_t + 1
+            if kk == rcrp.KK+1
+                push!(components, deepcopy(rcrp.component))
+                nn = add_column(nn)
+                rcrp.KK += 1
             end
 
             zz[tt][ii] = kk
             nn[tt, kk] += 1
-            additem!(components[tt][zz2table[tt, kk]], xx[tt][ii])
-            log_likelihood += loglikelihood(components[tt][zz2table[tt, kk]], xx[tt][ii])
+            additem!(components[kk], xx[tt][ii])
+            log_likelihood += loglikelihood(components[kk], xx[tt][ii])
 
-        end # end of iterating over observations
+        end # ii
 
-        # removing empty tables and their dishes
-        kk = 1
-        while kk <= rcrp.KK
-
-            if nn[tt, kk] == 0
-
-                # remove any table which has no customer so it
-                # doesn't get copied to the next restaurant.
-                # Remove its dish too.
-                if zz2table[tt, kk] != 0
-                    splice!(components[tt], zz2table[tt, kk])
-                    idx = find(x -> x>zz2table[tt, kk], zz2table[tt, :])
-                    zz2table[tt, idx] -= 1
-                    zz2table[tt, kk] = 0
-                end
-
-                if sum(nn[:, kk]) == 0
-
-                    for tt_ = 1:TT
-                        idx = find(x -> x>kk, zz[tt_])
-                        zz[tt_][idx] -= 1
-
-                        k_t = zz2table[tt_, kk]
-                        if k_t != 0
-                            splice!(components[tt_], k_t)
-                            idx = find(x -> x>k_t, zz2table[tt_, :])
-                            zz2table[tt_, idx] -= 1
-                            zz2table[tt_, kk] = 0
-                        end
-                    end
-
-                    nn = del_column(nn, kk)
-                    zz2table = del_column(zz2table, kk)
-                    rcrp.KK -= 1
-                end
-            end
-            kk += 1
+        if sample_hyperparam
+            K_t = length(findnz(nn[tt, :])[1])
+            sample_hyperparam!(rcrp, tt, N_t[tt], K_t, n_internals)
         end
 
-        ### resampling hyper-parameter ###
-        # K_t = length(findnz(zz2table[tt, :])[1])
-        # sample_hyperparam!(rcrp, tt, N_t[tt], K_t, n_internals)
+
 
         elapsed_time = toq()
-
         # save the sample
         if (iteration-n_burnins) % (n_lags+1) == 0 && iteration > n_burnins
-            sample_n = convert(Int, (iteration-n_burnins)/(n_lags+1))
+            sample_n = n_samples_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
             KK_list[sample_n] = rcrp.KK
-            KK_zz_dict[rcrp.KK] = deepcopy(zz)
+            KK_dict[rcrp.KK] = deepcopy(zz)
             if (sample_n % store_every) == 0
-                storesample(rcrp, KK_list, KK_zz_dict, n_burnins, n_lags, sample_n, filename)
+                storesample(rcrp, KK_list, KK_dict, n_burnins, n_lags, sample_n, filename)
             end
         end
 
-    end # iteration
-    KK_list, KK_zz_dict
-end # function
 
+    end # iteration
+    KK_list, KK_dict
+end
 
 
 
 function posterior{T1, T2}(
     rcrp::RCRP{T1},
     xx::Vector{Vector{T2}},
-    KK_zz_dict::Dict{Int, Vector{Vector{Int}}},
+    KK_dict::Dict{Int, Vector{Vector{Int}}},
     KK::Int)
 
     TT = length(xx)
@@ -712,45 +424,25 @@ function posterior{T1, T2}(
     end
 
     nn = zeros(Int, TT, KK)
-    zz = KK_zz_dict[KK]
+    zz = KK_dict[KK]
 
-    zz2table = zeros(Int, TT, KK)
-    k_t = 1
+    components = Array(typeof(rcrp.component), KK)
     for kk = 1:KK
-        for tt = 1:TT
-            if length(find(x -> x==kk, zz[tt])) != 0
-                zz2table[tt, kk] = maximum(zz2table[tt, :]) + 1
-            end
-        end
+        components[kk] = deepcopy(rcrp.component)
     end
 
-
-    components = Array(Vector{typeof(rcrp.component)}, TT)
-    for tt = 1:TT
-        K_t = maximum(zz2table[tt, :])
-        components[tt] = Array(typeof(rcrp.component), K_t)
-        for k_t = 1:K_t
-            components[tt][k_t] = deepcopy(rcrp.component)
-        end
-    end
 
     for tt = 1:TT
         for ii = 1:N_t[tt]
             nn[tt, zz[tt][ii]] += 1
-            k_t = zz2table[tt, zz[tt][ii]]
-            additem!(components[tt][k_t], xx[tt][ii])
+            additem!(components[zz[tt][ii]], xx[tt][ii])
         end
     end
 
-    pos_components = Array(Vector{typeof(posterior(rcrp.component))}, TT)
-    for tt = 1:TT
-        K_t = maximum(zz2table[tt, :])
-        pos_components[tt] = Array(typeof(posterior(rcrp.component)), K_t)
-        for k_t = 1:K_t
-            pos_components[tt][k_t] = posterior(components[tt][k_t])
-        end
+    pos_components = Array(typeof(posterior(rcrp.component)), KK)
+    for kk = 1:KK
+        pos_components[kk] = posterior(components[kk])
     end
 
-    return(pos_components, nn, zz2table)
+    return(pos_components, nn)
 end
-

@@ -15,8 +15,8 @@ srand(100)
 ## --- synthesizing the data --- ##
 
 TT      = 10
-N_t     = fill(1000, TT)
-true_aa = 0.8
+N_t     = fill(100, TT)
+true_aa = 0.5
 
 true_nn, true_zz, true_KK = BIAS.gen_RCRP_data(N_t, true_aa)
 
@@ -74,19 +74,14 @@ K_list, K_zz_dict = RCRP_gibbs_sampler!(rcrp, xx, zz,
 K_hist = hist(K_list, 0.5:maximum(K_list)+0.5)[2]
 candidate_K = indmax(K_hist)
 
-pos_components, nn, zz2table = posterior(rcrp, xx, K_zz_dict, candidate_K)
+pos_components, nn = posterior(rcrp, xx, K_zz_dict, candidate_K)
 
 
 # posterior distributions
-inferred_topics = Array(Matrix{Float64}, TT)
-for tt = 1:TT
-	inferred_topics[tt] = zeros(Float64, length(pos_components[tt]), vocab_size)
-
-	for k_t = 1:length(pos_components[tt])
-		inferred_topics[tt][k_t, :] = mean(pos_components[tt][k_t])
-	end
+inferred_topics = zeros(Float64, length(pos_components), vocab_size)
+for k_t = 1:length(pos_components)
+    inferred_topics[k_t, :] = mean(pos_components[k_t])
 end
 
-# visualizing the results
-tt = 1
-visualize_bartopics(inferred_topics[tt])
+visualize_bartopics(true_topics)
+visualize_bartopics(inferred_topics)
