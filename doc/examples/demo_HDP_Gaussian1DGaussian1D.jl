@@ -15,8 +15,9 @@ true_gg = 1.0
 true_aa = 0.5
 n_groups = 300
 n_group_j = 100 * ones(Int, n_groups)
+join_tables = true
 
-true_tji, true_njt, true_kjt, true_nn, true_mm, true_zz, true_KK = BIAS.gen_CRF_data(n_group_j, true_gg, true_aa)
+true_tji, true_njt, true_kjt, true_nn, true_mm, true_zz, true_KK = BIAS.gen_CRF_data(n_group_j, true_gg, true_aa, join_tables)
 
 vv = 0.001			# fixed variance
 ss = 2

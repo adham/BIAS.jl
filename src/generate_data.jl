@@ -1,3 +1,5 @@
+using Debug 
+
 #=
 generate_data.jl
 
@@ -112,7 +114,7 @@ function gen_RCRP_data(N_t::Vector{Int}, aa::Float64)
 end
 
 
-function gen_CRF_data(n_group_j::Vector{Int}, gg::Float64, aa::Float64)
+@debug function gen_CRF_data(n_group_j::Vector{Int}, gg::Float64, aa::Float64, join_tables::Bool)
 
     n_groups = length(n_group_j)
     zz       = Array(Vector{Int}, n_groups)
@@ -260,6 +262,34 @@ function gen_CRF_data(n_group_j::Vector{Int}, gg::Float64, aa::Float64)
             kk = kjt[jj][tbl]
             zz[jj][ii] = kk
             nn[jj, kk] += 1
+        end
+    end
+
+
+    # joining the tables that serve the same dish in each restaurant
+    if join_tables
+        for jj = 1:n_groups
+            kk_list = unique(kjt[jj])
+            new_kjt = zeros(Int, length(kk_list))
+            new_njt = zeros(Int, length(kk_list))
+
+            ll = 1
+            for unq_kk in kk_list
+                idx = find(x -> x==unq_kk, kjt[jj])
+                new_kjt[ll] = unq_kk
+                new_njt[ll] = sum(njt[jj][idx])
+                ll += 1
+            end
+
+            kjt[jj] = new_kjt
+            njt[jj] = new_njt
+        end
+
+        mm = zeros(Int, KK)
+        for jj = 1:n_groups
+            for kk in kjt[jj]
+                mm[kk] += 1
+            end
         end
     end
 
