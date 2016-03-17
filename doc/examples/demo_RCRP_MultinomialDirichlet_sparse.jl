@@ -68,13 +68,13 @@ sample_hyperparam = true
 n_internals = 10
 store_every = 10000
 filename    = "demo_RCRP_MultinomialDirichlet_"
-K_list, K_zz_dict = RCRP_gibbs_sampler!(rcrp, xx, zz,
+KK_list, KK_dict = RCRP_gibbs_sampler!(rcrp, xx, zz,
     n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
 
-K_hist = hist(K_list, 0.5:maximum(K_list)+0.5)[2]
-candidate_K = indmax(K_hist)
+KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
+candidate_KK = indmax(KK_hist)
 
-pos_components, nn = posterior(rcrp, xx, K_zz_dict, candidate_K)
+pos_components, nn = posterior(rcrp, xx, KK_dict, candidate_KK)
 
 
 # posterior distributions

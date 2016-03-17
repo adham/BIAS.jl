@@ -38,32 +38,64 @@ function Base.show(io::IO, hdp::HDP)
 end
 
 
+type CRFSample
+    tji::Vector{Vector{Int}}
+    njt::Vector{Vector{Int}}
+    kjt::Vector{Vector{Int}}
+    zz::Vector{Vector{Int}}
+
+    CRFSample(tji::Vector{Vector{Int}}, njt::Vector{Vector{Int}}, kjt::Vector{Vector{Int}}, zz::Vector{Vector{Int}}) = new(tji, njt, kjt, zz)
+end
+
+
+
+
 function storesample{T}(
     hdp::HDP{T},
     KK_list::Vector{Int},
-    KK_zz_dict::Dict{Int, Vector{Vector{Int}}},
+    KK_dict::Dict{Int, Vector{Vector{Int}}},
     alphas::Vector{Float64},
     betas::Vector{Vector{Float64}},
     gammas::Vector{Float64},
-    i::Int,
-    iteration::Int,
+    n_burnins::Int, n_lags::Int, sample_n::Int,
     filename::ASCIIString)
 
     println("storing on disk...")
     if endswith(filename, "_")
-        dummy_filename = string(filename, i, ".jld")
+        dummy_filename = string(filename, sample_n, ".jld")
     else
-        dummy_filename = string(filename, "_", i, ".jld")
+        dummy_filename = string(filename, "_", sample_n, ".jld")
     end
 
     JLD.save(dummy_filename,
-        "n_smaple", i,
         "hdp", hdp,
         "KK_list", KK_list,
-        "KK_zz_dict", KK_zz_dict,
+        "KK_dict", KK_dict,
         "alphas", alphas, "betas", betas, "gammas", gammas,
-        "iteration", iteration)
-end # storesample
+        "n_burnins", n_burnins, "n_lags", n_lags, "sample_n", sample_n)
+end
+
+
+function storesample{T}(
+    hdp::HDP{T},
+    KK_list::Vector{Int},
+    KK_dict::Dict{Int, CRFSample},
+    n_burnins::Int, n_lags::Int, sample_n::Int,
+    filename::ASCIIString)
+
+    println("\nstoring on disk...\n")
+    if endswith(filename, "_")
+        dummy_filename = string(filename, sample_n, ".jld")
+    else
+        dummy_filename = string(filename, "_", sample_n, ".jld")
+    end
+
+    JLD.save(dummy_filename,
+        "hdp", hdp,
+        "KK_list", KK_list,
+        "KK_dict", KK_dict,
+        "n_burnins", n_burnins, "n_lags", n_lags, "sample_n", sample_n)
+end
 
 
 function sample_hyperparam!(hdp::HDP, nn_sum::Vector{Int}, m::Int)
@@ -112,7 +144,7 @@ function collapsed_gibbs_sampler!{T1, T2}(
     sample_hyperparam::Bool=true, n_internals::Int=10,
     store_every::Int=100, filename::ASCIIString="HDP_results_",
     KK_list::Vector{Int}=Int[],
-    KK_zz_dict::Dict{Int, Vector{Vector{Int}}}=Dict{Int, Vector{Vector{Int}}}())
+    KK_dict::Dict{Int, Vector{Vector{Int}}}=Dict{Int, Vector{Vector{Int}}}())
 
 
     # constructing components
@@ -134,9 +166,11 @@ function collapsed_gibbs_sampler!{T1, T2}(
 
 
     if length(KK_list) == 0
+        n_sample_old = 0
         KK_list = zeros(Int, n_samples)
-        KK_zz_dict = Dict{Int, Vector{Vector{Int}}}()
+        KK_dict = Dict{Int, Vector{Vector{Int}}}()
     else
+        n_sample_old = length(KK_list)
         KK_list = vcat(KK_list, zeros(Int, n_samples))
     end
 
@@ -312,18 +346,18 @@ function collapsed_gibbs_sampler!{T1, T2}(
 
         # save the sample
         if (iteration-n_burnins) % (n_lags+1) == 0 &&  iteration > n_burnins
-            i = convert(Int, (iteration-n_burnins)/(n_lags+1))
-            KK_list[i] = hdp.KK
-            KK_zz_dict[hdp.KK] = deepcopy(zz)
-            betas[i] = deepcopy(my_beta)
-            gammas[i] = hdp.gg
-            alphas[i] = hdp.aa
-            if i % store_every == 0
-                storesample(hdp, KK_list, KK_zz_dict, alphas, betas, gammas, i, iteration, filename)
+            sample_n = n_sample_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
+            KK_list[sample_n] = hdp.KK
+            KK_dict[hdp.KK] = deepcopy(zz)
+            betas[sample_n] = deepcopy(my_beta)
+            gammas[sample_n] = hdp.gg
+            alphas[sample_n] = hdp.aa
+            if sample_n % store_every == 0
+                storesample(hdp, KK_list, KK_dict, alphas, betas, gammas, sample_n, iteration, filename)
             end
         end
     end # iteration
-    KK_list, KK_zz_dict, betas, gammas, alphas
+    KK_list, KK_dict, betas, gammas, alphas
 end # collapsed_gibbs_sampler!
 
 
@@ -335,7 +369,7 @@ function CRF_gibbs_sampler!{T1, T2}(
     sample_hyperparam::Bool=true, n_internals::Int=10,
     store_every::Int=100, filename::ASCIIString="HDP_results_",
     KK_list::Vector{Int}=Int[],
-    KK_zz_dict::Dict{Int, Vector{Vector{Int}}}=Dict{Int, Vector{Vector{Int}}}())
+    KK_dict::Dict{Int, CRFSample}=Dict{Int, CRFSample}())
 
 
 
@@ -357,7 +391,7 @@ function CRF_gibbs_sampler!{T1, T2}(
 
     if length(KK_list) == 0
         KK_list = zeros(Int, n_samples)
-        KK_zz_dict = Dict{Int, Vector{Vector{Int}}}()
+        KK_dict = Dict{Int, CRFSample}()
     else
         KK_list = vcat(KK_list, zeros(Int, n_samples))
     end
@@ -581,47 +615,60 @@ function CRF_gibbs_sampler!{T1, T2}(
                 end
                 mm[kk] += 1
                 zz[jj][tidx] = kk
-            end # n_group_j[jj]
+            end # tbl
         end # n_groups
 
+        # resampling hyperparams
+        if sample_hyperparam
+            nn = zeros(Int, n_groups, hdp.KK)
+            for jj = 1:n_groups
+                for ii = 1:n_group_j[jj]
+                    nn[jj, zz[jj][ii]] += 1
+                end
+            end
+            nn_sum = vec(sum(nn, 2))
+            m = sum([length(kjt[jj]) for jj=1:n_groups])  
+            sample_hyperparam!(hdp, nn_sum, m)
+        end
 
-        # TODO
-        # resample hyperparams
+
+
 
         # save the sample
         if (iteration-n_burnins) % (n_lags+1) == 0 &&  iteration > n_burnins
-            i = convert(Int, (iteration-n_burnins)/(n_lags+1))
-            KK_list[i] = hdp.KK
-            KK_zz_dict[hdp.KK] = deepcopy(zz)
-            if i % store_every == 0
-                # TODO
-                # save function
+            sample_n = convert(Int, (iteration-n_burnins)/(n_lags+1))
+            KK_list[sample_n] = hdp.KK
+            crf_sample = CRFSample(deepcopy(tji), deepcopy(njt), deepcopy(kjt), deepcopy(zz))
+            KK_dict[hdp.KK] = crf_sample
+            if sample_n % store_every == 0
+                storesample(hdp, KK_list, KK_dict, n_burnins, n_lags, sample_n, filename)
             end
         end
 
 
     end # iteration
 
-    KK_list, KK_zz_dict
+    KK_list, KK_dict
 end # CRF_gibbs_sampler
+
 
 
 function posterior{T1, T2}(
     hdp::HDP{T1},
     xx::Vector{Vector{T2}},
-    KK_zz_dict::Dict{Int, Vector{Vector{Int}}},
-    K::Int)
+    KK_dict::Dict{Int, Vector{Vector{Int}}},
+    KK::Int)
 
     n_groups  = length(xx)
     n_group_j = [length(xx[jj]) for jj = 1:n_groups]
 
-    components = Array(typeof(hdp.component), K)
-    for kk = 1:K
+    components = Array(typeof(hdp.component), KK)
+    for kk = 1:KK
         components[kk] = deepcopy(hdp.component)
     end
 
-    nn = zeros(Int, n_groups, K)
-    zz = KK_zz_dict[K]
+    nn = zeros(Int, n_groups, KK)
+    zz = KK_dict[KK]
 
     for jj = 1:n_groups
         for ii = 1:n_group_j[jj]
@@ -634,5 +681,47 @@ function posterior{T1, T2}(
     pij = pij ./ sum(pij, 1)
 
 
-    return([posterior(components[kk]) for kk =1:K], nn, pij)
+    [posterior(components[kk]) for kk =1:KK], nn, pij
+end
+
+function posterior{T1, T2}(
+    hdp::HDP{T1},
+    xx::Vector{Vector{T2}},
+    KK_dict::Dict{Int, CRFSample},
+    KK::Int)
+
+
+    n_groups  = length(xx)
+    n_group_j = [length(xx[jj]) for jj = 1:n_groups]
+    nn = zeros(Int, n_groups, KK)
+    mm = zeros(Int, KK)
+
+
+    components = Array(typeof(hdp.component), KK)
+    for kk = 1:KK
+        components[kk] = deepcopy(hdp.component)
+    end
+
+    zz = KK_dict[KK].zz
+    kjt = KK_dict[KK].kjt
+
+    for jj = 1:n_groups
+
+        for kk in kjt[jj]
+            mm[kk] += 1
+        end
+
+        for ii = 1:n_group_j[jj]
+            kk = zz[jj][ii]
+            additem!(components[kk], xx[jj][ii])
+            nn[jj, kk] += 1
+        end
+    end
+
+    pij = nn + hdp.aa
+    pij = pij ./ sum(pij, 1)
+
+
+    [posterior(components[kk]) for kk =1:KK], KK_dict[KK].tji, KK_dict[KK].njt, KK_dict[KK].kjt, KK_dict[KK].zz, nn, mm, pij
+
 end

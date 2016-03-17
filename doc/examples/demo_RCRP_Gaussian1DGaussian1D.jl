@@ -66,7 +66,7 @@ sample_hyperparam = true
 n_internals = 10
 store_every = 5000
 filename    = "demo_RCRP_Gaussian1DGaussian1D_"
-KK_list, KK_zz_dict = RCRP_gibbs_sampler!(rcrp, xx, zz,
+KK_list, KK_dict = RCRP_gibbs_sampler!(rcrp, xx, zz,
     n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
 
 
@@ -74,4 +74,4 @@ KK_list, KK_zz_dict = RCRP_gibbs_sampler!(rcrp, xx, zz,
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
 
-pos_components, nn = posterior(rcrp, xx, KK_zz_dict, candidate_KK)
+pos_components, nn = posterior(rcrp, xx, KK_dict, candidate_KK)

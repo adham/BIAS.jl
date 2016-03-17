@@ -56,7 +56,7 @@ end
 function gen_RCRP_data(N_t::Vector{Int}, aa::Float64)
 
     KK = 1
-    TT      = length(N_t)
+    TT = length(N_t)
     nn = zeros(Int, TT, KK)
     zz = Array(Vector{Int}, TT)
 
@@ -263,5 +263,5 @@ function gen_CRF_data(n_group_j::Vector{Int}, gg::Float64, aa::Float64)
         end
     end
 
-    return(tji, njt, kjt, nn, zz, KK)
+    return(tji, njt, kjt, nn, mm, zz, KK)
 end
