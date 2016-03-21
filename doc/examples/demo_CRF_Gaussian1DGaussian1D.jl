@@ -8,6 +8,7 @@ Adham Beyki, odinay@gmail.com
 =#
 
 using BIAS
+srand(123)
 
 ## --- synthesizing the data --- ##
 true_gg = 1.0
@@ -60,13 +61,13 @@ n_samples   = 200
 sample_hyperparam = true
 n_internals = 10
 store_every = 100
-filename    = "demo_HDP_Gaussian1DGaussian1D_"
+filename    = "demo_CRF_Gaussian1DGaussian1D_"
 
 
-KK_list, KK_dict, betas, gammas, alphas = collapsed_gibbs_sampler!(hdp, xx, zz, n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
+KK_list, KK_dict = CRF_gibbs_sampler!(hdp, xx, zz, n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
 
 # posterior distributions
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
 
-posterior_components, nn, pij = posterior(hdp, xx, KK_dict, candidate_KK)
+pos_components, tji, njt, kjt, zz, nn, mm, pij = posterior(hdp, xx, KK_dict, candidate_KK, join_tables)

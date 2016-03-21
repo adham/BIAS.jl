@@ -98,7 +98,7 @@ function storesample{T}(
 end
 
 
-function sample_hyperparam!(hdp::HDP, nn_sum::Vector{Int}, m::Int)
+function sample_hyperparam!(hdp::HDP, n_group_j::Vector{Int}, m::Int)
     #= NOTE
     resampling the group level concentration parameter α0 using auxiliary variables
     w and s, Eq. 50 Teh etal 04 the Gamma distribution in Eq.50 is expressed using
@@ -107,12 +107,12 @@ function sample_hyperparam!(hdp::HDP, nn_sum::Vector{Int}, m::Int)
     Gamma(a, 1/b) = Gamma(a) / b
     =#
 
-    n_groups = length(nn_sum)
+    n_groups = length(n_group_j)
     w = zeros(Float64, n_groups)
     for jj = 1:n_groups
-        w[jj] = rand(Distributions.Beta(hdp.aa+1, nn_sum[jj]))
+        w[jj] = rand(Distributions.Beta(hdp.aa+1, n_group_j[jj]))
     end
-    p = nn_sum / hdp.aa
+    p = n_group_j / hdp.aa
     p ./= (p+1.0)
 
     s = zeros(Int, n_groups)
@@ -134,7 +134,11 @@ function sample_hyperparam!(hdp::HDP, nn_sum::Vector{Int}, m::Int)
         hdp.gg = rand(Distributions.Gamma(hdp.g1+hdp.KK-1)) / (hdp.g2-log(eta))
     end
 end # sample_hyperparam
-
+function sample_hyperparam!(hdp::HDP, n_group_j::Vector{Int}, m::Int, n_internals::Int)
+    for iteration = 1:n_internals
+        sample_hyperparam!(hdp, n_group_j, m)
+    end
+end # sample_hyperparam
 
 function collapsed_gibbs_sampler!{T1, T2}(
     hdp::HDP{T1},
@@ -155,7 +159,7 @@ function collapsed_gibbs_sampler!{T1, T2}(
 
     n_iterations    = n_burnins + (n_samples)*(n_lags+1)
     n_groups        = length(xx)
-    n_group_j       = [length(zz[jj]) for jj = 1:n_groups]
+    n_group_j       = zeros(Int, n_groups)
     nn              = zeros(Int, n_groups, hdp.KK)
     pp              = zeros(Float64, hdp.KK+1)
     log_likelihood  = 0.0
@@ -164,6 +168,9 @@ function collapsed_gibbs_sampler!{T1, T2}(
     gammas = zeros(Float64, n_samples)
     alphas = zeros(Float64, n_samples)
 
+    for jj = 1:n_groups
+        n_group_j[jj] = length(zz[jj])
+    end
 
     if length(KK_list) == 0
         n_sample_old = 0
@@ -337,9 +344,8 @@ function collapsed_gibbs_sampler!{T1, T2}(
             ##   3   ##
             # resampling hyper-parameters γ and α0
             if sample_hyperparam
-                nn_sum = vec(sum(nn, 2))
                 m = sum(M)
-                sample_hyperparam!(hdp, nn_sum, m)
+                sample_hyperparam!(hdp, n_group_j, m)
             end
         end # n_internals
         elapsed_time = toq()
@@ -349,11 +355,11 @@ function collapsed_gibbs_sampler!{T1, T2}(
             sample_n = n_sample_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
             KK_list[sample_n] = hdp.KK
             KK_dict[hdp.KK] = deepcopy(zz)
+            alphas[sample_n] = hdp.aa
             betas[sample_n] = deepcopy(my_beta)
             gammas[sample_n] = hdp.gg
-            alphas[sample_n] = hdp.aa
             if sample_n % store_every == 0
-                storesample(hdp, KK_list, KK_dict, alphas, betas, gammas, sample_n, iteration, filename)
+                storesample(hdp, KK_list, KK_dict, alphas, betas, gammas, n_burnins, n_lags, sample_n, filename)
             end
         end
     end # iteration
@@ -628,7 +634,7 @@ function CRF_gibbs_sampler!{T1, T2}(
             end
             nn_sum = vec(sum(nn, 2))
             m = sum([length(kjt[jj]) for jj=1:n_groups])
-            sample_hyperparam!(hdp, nn_sum, m)
+            sample_hyperparam!(hdp, nn_sum, m, n_internals)
         end
 
 
