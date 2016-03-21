@@ -627,7 +627,7 @@ function CRF_gibbs_sampler!{T1, T2}(
                 end
             end
             nn_sum = vec(sum(nn, 2))
-            m = sum([length(kjt[jj]) for jj=1:n_groups])  
+            m = sum([length(kjt[jj]) for jj=1:n_groups])
             sample_hyperparam!(hdp, nn_sum, m)
         end
 
@@ -671,7 +671,7 @@ function posterior{T1, T2}(
     zz = KK_dict[KK]
 
     for jj = 1:n_groups
-        for ii = 1:n_group_j[jj]
+        for ii =     1:n_group_j[jj]
             kk = zz[jj][ii]
             additem!(components[kk], xx[jj][ii])
             nn[jj, kk] += 1
@@ -684,11 +684,15 @@ function posterior{T1, T2}(
     [posterior(components[kk]) for kk =1:KK], nn, pij
 end
 
+
+
+
 function posterior{T1, T2}(
     hdp::HDP{T1},
     xx::Vector{Vector{T2}},
     KK_dict::Dict{Int, CRFSample},
-    KK::Int)
+    KK::Int,
+    join_tables::Bool=false)
 
 
     n_groups  = length(xx)
@@ -696,21 +700,17 @@ function posterior{T1, T2}(
     nn = zeros(Int, n_groups, KK)
     mm = zeros(Int, KK)
 
-
     components = Array(typeof(hdp.component), KK)
     for kk = 1:KK
         components[kk] = deepcopy(hdp.component)
     end
 
-    zz = KK_dict[KK].zz
+    tji = KK_dict[KK].tji
+    njt = KK_dict[KK].njt
     kjt = KK_dict[KK].kjt
+    zz  = KK_dict[KK].zz
 
     for jj = 1:n_groups
-
-        for kk in kjt[jj]
-            mm[kk] += 1
-        end
-
         for ii = 1:n_group_j[jj]
             kk = zz[jj][ii]
             additem!(components[kk], xx[jj][ii])
@@ -722,6 +722,43 @@ function posterior{T1, T2}(
     pij = pij ./ sum(pij, 1)
 
 
-    [posterior(components[kk]) for kk =1:KK], KK_dict[KK].tji, KK_dict[KK].njt, KK_dict[KK].kjt, KK_dict[KK].zz, nn, mm, pij
+    if join_tables
+        for jj = 1:n_groups
+
+            kk_list = unique(kjt[jj])
+
+            if length(kk_list) != length(kjt[jj])
+                new_kjt = zeros(Int, length(kk_list))
+                new_njt = zeros(Int, length(kk_list))
+                ll = 1
+
+                for unq_kk in kk_list
+                    idx = find(x -> x==unq_kk, kjt[jj])
+                    new_kjt[ll] = unq_kk
+                    new_njt[ll] = sum(njt[jj][idx])
+
+                    for idid in idx
+                        tbl_idx = find(x -> x==idid, tji[jj])
+                        tji[jj][tbl_idx] = ll
+                    end
+
+                    ll += 1
+                end
+
+                kjt[jj] = new_kjt
+                njt[jj] = new_njt
+            end
+        end
+    end
+
+    mm = zeros(Int, KK)
+    for jj = 1:n_groups
+        for kk in kjt[jj]
+            mm[kk] += 1
+        end
+    end
+
+
+    [posterior(components[kk]) for kk =1:KK], tji, njt, kjt, zz, nn, mm, pij
 
 end

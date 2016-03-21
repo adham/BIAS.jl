@@ -72,5 +72,4 @@ KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
 
 # posterior_components, nn, pij = posterior(hdp, xx, KK_dict, candidate_KK)
-pos_components, tji, njt, kjt, zz, nn, mm, pij = posterior(hdp, xx, KK_dict, candidate_KK)
-
+pos_components, tji, njt, kjt, zz, nn, mm, pij = posterior(hdp, xx, KK_dict, candidate_KK, join_tables)
