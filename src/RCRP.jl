@@ -227,8 +227,8 @@ function RCRP_gibbs_sampler!{T1, T2}(
         end # ii
 
         if sample_hyperparam
-            K_t = length(findnz(nn[tt, :])[1])
-            sample_hyperparam!(rcrp, tt, N_t[tt], K_t, n_internals)
+            KK_tt = length(findnz(nn[tt, :])[1])
+            sample_hyperparam!(rcrp, tt, N_t[tt], KK_tt, n_internals)
         end
 
 
@@ -326,8 +326,8 @@ function RCRP_gibbs_sampler!{T1, T2}(
 
 
             if sample_hyperparam
-                K_t = length(findnz(nn[tt, :])[1])
-                sample_hyperparam!(rcrp, tt, N_t[tt], K_t, n_internals)
+                KK_tt = length(findnz(nn[tt, :])[1])
+                sample_hyperparam!(rcrp, tt, N_t[tt], KK_tt, n_internals)
             end
 
         end # tt
@@ -387,8 +387,8 @@ function RCRP_gibbs_sampler!{T1, T2}(
         end # ii
 
         if sample_hyperparam
-            K_t = length(findnz(nn[tt, :])[1])
-            sample_hyperparam!(rcrp, tt, N_t[tt], K_t, n_internals)
+            KK_tt = length(findnz(nn[tt, :])[1])
+            sample_hyperparam!(rcrp, tt, N_t[tt], KK_tt, n_internals)
         end
 
 

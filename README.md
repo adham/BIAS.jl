@@ -11,7 +11,8 @@ models in [julia](http://julialang.org/). The implemented models include:
 2. Latent Dirichlet Allocation (LDA)
 3. Dirichlet Process Mixture Model (DPM)
 4. Hierarchical Dielectric Mixture Model (HDP)
-5. dynamic Hierarchical Dirichelt Mixture Model (dHDP)
-6. Temporal Dirichelt Process Mixture model (TDPM) also called Recurrent Chinese Restaurant Process (RCRP)
+5. dynamic Hierarchical Dirichlet Mixture Model (dHDP)
+6. Temporal Dirichlet Process Mixture model (TDPM) also called Recurrent Chinese Restaurant Process (RCRP)
+7. Recurrent Chinese Restaurant Franchise (RCRF)
 
 See the [Package Documentation](http://biasjl.readthedocs.org) for details and examples.

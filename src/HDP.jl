@@ -624,7 +624,7 @@ function CRF_gibbs_sampler!{T1, T2}(
             end # tbl
         end # n_groups
 
-        # resampling hyperparams
+        # resampling hyper-parameters
         if sample_hyperparam
             nn = zeros(Int, n_groups, hdp.KK)
             for jj = 1:n_groups
@@ -632,9 +632,8 @@ function CRF_gibbs_sampler!{T1, T2}(
                     nn[jj, zz[jj][ii]] += 1
                 end
             end
-            nn_sum = vec(sum(nn, 2))
             m = sum([length(kjt[jj]) for jj=1:n_groups])
-            sample_hyperparam!(hdp, nn_sum, m, n_internals)
+            sample_hyperparam!(hdp, n_group_j, m, n_internals)
         end
 
 

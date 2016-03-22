@@ -9,7 +9,7 @@ These are the notes that has come to my mind while coding this package.
 
 * add help and docstring to Julia functions
 
-* implemenet a count version for LDA and see which one is faster
+* implement a count version for LDA and see which one is faster
 
 * Make sure you have not sued  .==, .< and these kind of operators. They should be avoided for the sake of performance. Use loops Instead. Loops are faster. Loops are better.
 
@@ -17,29 +17,29 @@ These are the notes that has come to my mind while coding this package.
 
 * log scale for stick_breaking instead of sticks.
 
-* can I use loglikelihood as a measure of knoewing if the chain has been running long enough?
+* can I use loglikelihood as a measure of knowing if the chain has been running long enough?
 
-* Although dHDP returns the correct nn, it cannot retrieve rr. Does it have anything to do with identifiabilty? Is it important at all?
+* Although dHDP returns the correct nn, it cannot retrieve rr. Does it have anything to do with identifiability? Is it important at all?
 
 * see if changing the direction of matrices u have affects the speed.
 
-* think of saving the results whenever you want. Maybe pausing for a few secs after finishin each iter
-* do I really need ot keep track of components in HDP? saving them I mean?
+* think of saving the results whenever you want. Maybe pausing for a few secs after finishing each iter
+* do I really need to keep track of components in HDP? saving them I mean?
 * how to use this learnt model to estimate topic dist for a new doc?
 
-* a function to copute the perpelixty
+* a function to compute the perplexity
 
-* look at all the cpde you have written as the for condition can not change in its body. You have to change the for loop to a while loop
+* look at all the code you have written as the for condition can not change in its body. You have to change the for loop to a while loop
 
 * take a look at devetorize.jl by Dahua Lin
 
-* wherever possible sue finfnz instead of find.much much faster
+* wherever possible use finfnz instead of find. It is faster.
 
 * reorder the BIAS.jl
 
 * write_top_doctopic or LDA
 
-* make sure when you save some reuslts, there is a way to load and continue from the loaded data
+* make sure when you save some results, there is a way to load and continue from the loaded data
 
 * I noticed that CRF_sampler is faster than collapsed_sampler but apparently not as accurate.
 
