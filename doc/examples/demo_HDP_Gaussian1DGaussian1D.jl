@@ -1,7 +1,8 @@
 #=
 demo_HDP_Gaussian1DGaussian1D
 
-A demo for HDP with Gaussian1DGaussian1D Bayesian components.
+A demo for Hierarchical Dirichlet Process mixture models with Gaussian1DGaussian1D 
+Bayesian components. This demo uses auxiliary variable method for for inference.
 
 28/07/2015
 Adham Beyki, odinay@gmail.com

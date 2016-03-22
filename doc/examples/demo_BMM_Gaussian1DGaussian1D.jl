@@ -39,7 +39,7 @@ v0 = 2.0
 q0 = Gaussian1DGaussian1D(m0, v0, vv)
 
 
-# constructing the Bayesian Mixrue Model
+# constructing the Bayesian Mixture Model
 KK = true_KK
 bmm_aa = 1.0
 bmm = BMM(q0, KK, bmm_aa)

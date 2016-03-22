@@ -1,7 +1,8 @@
 #=
-HDP_demo_MultinomialDirichlet_sparse
+demo_HDP_MultinomialDirichlet_sparse.jl
 
-A demo for HDP with MultinomialDIrichlet Bayesian components.
+A demo for Hierarchical Dirichlet Process mixture models with MultinomialDirichlet 
+Bayesian components. This demo uses auxiliary variable method for for inference.
 
 15/09/2015
 Adham Beyki, odinay@gmail.com

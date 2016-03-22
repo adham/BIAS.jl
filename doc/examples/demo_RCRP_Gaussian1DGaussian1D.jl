@@ -23,9 +23,9 @@ true_nn, true_zz = BIAS.gen_RCRP_data(N_t, true_aa)
 true_KK = size(true_nn, 2)
 
 # constructing the topics
-scale = 10.0
+ss = 10.0
 vv = 0.01
-true_atoms = [Gaussian1D(scale*kk, vv) for kk = 1:true_KK]
+true_atoms = [Gaussian1D(ss*kk, vv) for kk = 1:true_KK]
 
 
 # constructing the observations

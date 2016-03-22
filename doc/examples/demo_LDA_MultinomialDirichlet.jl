@@ -62,7 +62,7 @@ n_burnins   = 100
 n_lags      = 2
 n_samples   = 400
 store_every = 100
-filename    = "demo_LDA_Multinomial_Dirichlet"
+filename    = "demo_LDA_MultinomialDirichlet_"
 
 collapsed_gibbs_sampler!(lda, xx, zz, n_burnins, n_lags, n_samples, store_every, filename)
 

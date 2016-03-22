@@ -1,7 +1,8 @@
 #=
-LDA_demo_MultinomialDirichlet
+demo_HDP_MultinomialDirichlet.jl
 
-A demo for LDA with MultinomialDIrichlet Bayesian components.
+A demo for Hierarchical Dirichlet Process mixture models with MultinomialDirichlet 
+Bayesian components. This demo uses auxiliary variable method for for inference.
 
 28/07/2015
 Adham Beyki, odinay@gmail.com

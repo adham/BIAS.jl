@@ -1,7 +1,8 @@
 #=
-demo_HDP_Gaussian1DGaussian1D
+demo_CRF_Gaussian1DGaussian1D
 
-A demo for HDP with Gaussian1DGaussian1D Bayesian components.
+A demo for Hierarchical Dirichlet Process mixture models with Gaussian1DGaussian1D 
+Bayesian components. This demo uses Chinese Restaurant Franchise for inference.
 
 28/07/2015
 Adham Beyki, odinay@gmail.com
@@ -33,7 +34,7 @@ for jj = 1:n_groups
 end
 
 ## ------- inference -------- ##
-# constructing the Bayesian component of LDA model
+# constructing the Bayesian component of HDP model
 m0 = mean(mean(xx))
 v0 = 10.0
 q0 = Gaussian1DGaussian1D(m0, v0, vv)
