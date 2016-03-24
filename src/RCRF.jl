@@ -910,6 +910,12 @@ function RCRF_gibbs_sampler!{T1, T2}(
 
     end # iteration
 
+    sample_n = n_samples_old +  convert(Int, (n_iterations-n_burnins)/(n_lags+1))
+    KK_list[sample_n] = rcrf.KK
+    rcrf_sample = RCRFSample(deepcopy(njt), deepcopy(kjt), deepcopy(zz))
+    KK_dict[rcrf.KK] = rcrf_sample
+    storesample(rcrf, KK_list, KK_dict, n_burnins, n_lags, sample_n, filename)
+
     KK_list, KK_dict
 
 end # RCRF_gibbs_sampler!()
