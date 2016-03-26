@@ -173,11 +173,11 @@ function collapsed_gibbs_sampler!{T1, T2}(
     end
 
     if length(KK_list) == 0
-        n_sample_old = 0
+        n_sampels_old = 0
         KK_list = zeros(Int, n_samples)
         KK_dict = Dict{Int, Vector{Vector{Int}}}()
     else
-        n_sample_old = length(KK_list)
+        n_sampels_old = length(KK_list)
         KK_list = vcat(KK_list, zeros(Int, n_samples))
     end
 
@@ -352,7 +352,7 @@ function collapsed_gibbs_sampler!{T1, T2}(
 
         # save the sample
         if (iteration-n_burnins) % (n_lags+1) == 0 &&  iteration > n_burnins
-            sample_n = n_sample_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
+            sample_n = n_sampels_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
             KK_list[sample_n] = hdp.KK
             KK_dict[hdp.KK] = deepcopy(zz)
             alphas[sample_n] = hdp.aa
@@ -363,6 +363,15 @@ function collapsed_gibbs_sampler!{T1, T2}(
             end
         end
     end # iteration
+
+    sample_n = n_sampels_old + convert(Int, (n_iterations-n_burnins)/(n_lags+1))
+    KK_list[sample_n] = hdp.KK
+    KK_dict[hdp.KK] = deepcopy(zz)
+    alphas[sample_n] = hdp.aa
+    betas[sample_n] = deepcopy(my_beta)
+    gammas[sample_n] = hdp.gg
+    storesample(hdp, KK_list, KK_dict, alphas, betas, gammas, n_burnins, n_lags, sample_n, filename)
+
     KK_list, KK_dict, betas, gammas, alphas
 end # collapsed_gibbs_sampler!
 
@@ -376,7 +385,6 @@ function CRF_gibbs_sampler!{T1, T2}(
     store_every::Int=100, filename::ASCIIString="HDP_results_",
     KK_list::Vector{Int}=Int[],
     KK_dict::Dict{Int, CRFSample}=Dict{Int, CRFSample}())
-
 
 
     # constructing the components
@@ -396,9 +404,11 @@ function CRF_gibbs_sampler!{T1, T2}(
 
 
     if length(KK_list) == 0
+        n_sampels_old = 0
         KK_list = zeros(Int, n_samples)
         KK_dict = Dict{Int, CRFSample}()
     else
+        n_sampels_old = length(KK_list)
         KK_list = vcat(KK_list, zeros(Int, n_samples))
     end
 
@@ -641,7 +651,7 @@ function CRF_gibbs_sampler!{T1, T2}(
 
         # save the sample
         if (iteration-n_burnins) % (n_lags+1) == 0 &&  iteration > n_burnins
-            sample_n = convert(Int, (iteration-n_burnins)/(n_lags+1))
+            sample_n = n_sampels_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
             KK_list[sample_n] = hdp.KK
             crf_sample = CRFSample(deepcopy(tji), deepcopy(njt), deepcopy(kjt), deepcopy(zz))
             KK_dict[hdp.KK] = crf_sample
@@ -652,6 +662,12 @@ function CRF_gibbs_sampler!{T1, T2}(
 
 
     end # iteration
+
+    sample_n = n_sampels_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
+    KK_list[sample_n] = hdp.KK
+    crf_sample = CRFSample(deepcopy(tji), deepcopy(njt), deepcopy(kjt), deepcopy(zz))
+    KK_dict[hdp.KK] = crf_sample
+    storesample(hdp, KK_list, KK_dict, n_burnins, n_lags, sample_n, filename)
 
     KK_list, KK_dict
 end # CRF_gibbs_sampler

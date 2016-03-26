@@ -10,35 +10,42 @@ Adham Beyki, odinay@gmail.com
 ##     Recurrent Chinese Restaurant Franchise     ##
 ####################################################
 type RCRF{T} <: hMixtureModel
-  component::T
-  KK::Int
-  gg::Vector{Float64}
-  g1::Float64
-  g2::Float64
-  aa::Vector{Float64}
-  a1::Float64
-  a2::Float64
+    component::T
+    KK::Int
+    gg::Vector{Float64}
+    g1::Float64
+    g2::Float64
+    aa::Vector{Float64}
+    a1::Float64
+    a2::Float64
 
-  RCRF{T}(c::T, KK::Int, gg::Vector{Float64}, g1::Float64, g2::Float64, aa::Vector{Float64}, a1::Float64, a2::Float64) = new(c, KK, gg, g1, g2, aa, a1, a2)
+    RCRF{T}(c::T,
+            KK::Int,
+            gg::Vector{Float64}, g1::Float64, g2::Float64,
+            aa::Vector{Float64}, a1::Float64, a2::Float64) = new(c, KK, gg, g1, g2, aa, a1, a2)
 end
 
-RCRF{T}(c::T, KK::Int, gg::Real, g1::Real, g2::Real, aa::Real, a1::Real, a2::Real, TT::Int) = RCRF{typeof(c)}(c, KK,
-  fill(convert(Float64, gg), TT), convert(Float64, g1), convert(Float64, g2),
-  fill(convert(Float64, aa), TT), convert(Float64, a1), convert(Float64, a2))
+RCRF{T}(c::T,
+        KK::Int,
+        gg::Real, g1::Real, g2::Real,
+        aa::Real, a1::Real, a2::Real,
+        TT::Int) = RCRF{typeof(c)}(c, KK,
+        fill(convert(Float64, gg), TT), convert(Float64, g1), convert(Float64, g2),
+        fill(convert(Float64, aa), TT), convert(Float64, a1), convert(Float64, a2))
 
 
 function Base.show(io::IO, rcrf::RCRF)
-  println(io, "Recurrent Chinese Restaurant Franchise Mixture Model with $(rcrf.KK) $(typeof(rcrf.component)) components")
+    println(io, "Recurrent Chinese Restaurant Franchise Mixture Model with $(rcrf.KK) $(typeof(rcrf.component)) components")
 end
 
 
 
 type RCRFSample
-  njt::Vector{Vector{Vector{Int}}}
-  kjt::Vector{Vector{Vector{Int}}}
-  zz::Vector{Vector{Vector{Int}}}
+    njt::Vector{Vector{Vector{Int}}}
+    kjt::Vector{Vector{Vector{Int}}}
+    zz::Vector{Vector{Vector{Int}}}
 
-  RCRFSample(njt::Vector{Vector{Vector{Int}}}, kjt::Vector{Vector{Vector{Int}}}, zz::Vector{Vector{Vector{Int}}}) = new(njt, kjt, zz)
+    RCRFSample(njt::Vector{Vector{Vector{Int}}}, kjt::Vector{Vector{Vector{Int}}}, zz::Vector{Vector{Vector{Int}}}) = new(njt, kjt, zz)
 end
 
 

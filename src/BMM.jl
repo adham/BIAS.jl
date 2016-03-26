@@ -114,7 +114,7 @@ function collapsed_gibbs_sampler!{T1, T2}(
             nn[kk] += 1
             additem!(components[kk], xx[ii])
             log_likelihood += loglikelihood(components[kk], xx[ii])
-        end
+        end # ii
         elapsed_time = toq()
 
         # save the sample
@@ -125,7 +125,10 @@ function collapsed_gibbs_sampler!{T1, T2}(
                 storesample(bmm, components, zz, n_burnins, n_lags, sample_n, filename)
             end
         end
-    end
+    end # iteration
+
+    sample_n = convert(Int, (n_iterations-n_burnins)/(n_lags+1))
+    storesample(bmm, components, zz, n_burnins, n_lags, sample_n, filename)
 end
 
 

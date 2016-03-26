@@ -71,7 +71,7 @@ function collapsed_gibbs_sampler!{T1, T2}(
     xx::Vector{Vector{T2}},
     zz::Vector{Vector{Int}},
     n_burnins::Int, n_lags::Int, n_samples::Int,
-        store_every::Int=100, filename::ASCIIString="LDA_results_")
+    store_every::Int=100, filename::ASCIIString="LDA_results_")
 
 
     components = Array(typeof(lda.component), lda.KK)
@@ -80,28 +80,28 @@ function collapsed_gibbs_sampler!{T1, T2}(
     end
 
     n_groups       = length(xx)
-  n_group_j      = [length(zz[jj]) for jj = 1:n_groups]
-  n_iterations   = n_burnins + (n_samples)*(n_lags+1)
-  lda_aa         = fill(lda.aa, lda.KK)
-  pp             = zeros(Float64, lda.KK)
-  nn             = zeros(Int, n_groups, lda.KK)
+    n_group_j      = [length(zz[jj]) for jj = 1:n_groups]
+    n_iterations   = n_burnins + (n_samples)*(n_lags+1)
+    lda_aa         = fill(lda.aa, lda.KK)
+    pp             = zeros(Float64, lda.KK)
+    nn             = zeros(Int, n_groups, lda.KK)
     log_likelihood = 0.0
 
 
-  # initializing the components
+    # initializing the components
     tic()
-  for jj = 1:n_groups
-    for ii = 1:n_group_j[jj]
-      kk = zz[jj][ii]
-      additem!(components[kk], xx[jj][ii])
-      nn[jj, kk] += 1
+    for jj = 1:n_groups
+        for ii = 1:n_group_j[jj]
+            kk = zz[jj][ii]
+            additem!(components[kk], xx[jj][ii])
+            nn[jj, kk] += 1
             log_likelihood += loglikelihood(components[kk], xx[jj][ii])
+        end
     end
-  end
-  elapsed_time = toq()
+    elapsed_time = toq()
 
 
-  # starting the MCMC chain
+    # starting the MCMC chain
     for iteration = 1:n_iterations
 
         if iteration < n_burnins
@@ -109,31 +109,31 @@ function collapsed_gibbs_sampler!{T1, T2}(
         end
         println(@sprintf("iteration: %d, KK=%d, time=%.2f, likelihood=%.2f",
             iteration, lda.KK, elapsed_time, log_likelihood))
-    log_likelihood = 0.0
+        log_likelihood = 0.0
 
         tic()
-    @inbounds for jj = randperm(n_groups)
-      @inbounds for ii = randperm(n_group_j[jj])
+        @inbounds for jj = randperm(n_groups)
+            @inbounds for ii = randperm(n_group_j[jj])
 
                 # 1
                 # remove the datapoint
                 kk = zz[jj][ii]
-        delitem!(components[kk], xx[jj][ii])
-        nn[jj, kk] -= 1
+                delitem!(components[kk], xx[jj][ii])
+                nn[jj, kk] -= 1
 
-        # 2
+                # 2
                 # sample zz
                 kk = LDA_sample_zz(components, xx[jj][ii], nn, pp, lda.aa, jj)
 
                 # 3
                 # add the datapoint to the newly sampled cluster
-        zz[jj][ii] = kk
-        additem!(components[kk], xx[jj][ii])
-        nn[jj, kk] += 1
+                zz[jj][ii] = kk
+                additem!(components[kk], xx[jj][ii])
+                nn[jj, kk] += 1
                 log_likelihood += loglikelihood(components[kk], xx[jj][ii])
-      end
-    end
-    elapsed_time = toq()
+            end #ii
+        end # jj
+        elapsed_time = toq()
 
         if (iteration-n_burnins) % (n_lags+1) == 0 &&  iteration > n_burnins
             i = convert(Int, (iteration-n_burnins)/(n_lags+1))
@@ -143,29 +143,27 @@ function collapsed_gibbs_sampler!{T1, T2}(
                 storesample(lda, components, zz, i, iteration, filename)
             end
         end
-  end
+    end # iteration
+
+    i = convert(Int, (n_iterations-n_burnins)/(n_lags+1))
+    storesample(lda, components, zz, i, iteration, filename)
 end
 
 
-function posterior{T1, T2}(lda::LDA{T1},
-        xx::Vector{Vector{T2}}, zz::Vector{Vector{Int}})
+function posterior{T1, T2}(lda::LDA{T1}, xx::Vector{Vector{T2}}, zz::Vector{Vector{Int}})
 
-  n_groups = length(xx)
-  n_group_j = [length(zz[jj]) for jj = 1:n_groups]
-  components = [deepcopy(lda.component) for k = 1:lda.KK]
-  nn = zeros(Int, n_groups, lda.KK)
+    n_groups = length(xx)
+    n_group_j = [length(zz[jj]) for jj = 1:n_groups]
+    components = [deepcopy(lda.component) for k = 1:lda.KK]
+    nn = zeros(Int, n_groups, lda.KK)
 
-  for jj = 1:n_groups
-    for ii = 1:n_group_j[jj]
-      kk = zz[jj][ii]
-      additem!(components[kk], xx[jj][ii])
-      nn[jj, kk] += 1
+    for jj = 1:n_groups
+        for ii = 1:n_group_j[jj]
+            kk = zz[jj][ii]
+            additem!(components[kk], xx[jj][ii])
+            nn[jj, kk] += 1
+        end
     end
-  end
 
-  return([posterior(components[kk]) for kk =1:lda.KK], nn)
+    return([posterior(components[kk]) for kk =1:lda.KK], nn)
 end
-
-
-
-
