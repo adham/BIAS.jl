@@ -4,6 +4,10 @@ RCRP.jl
 
 115/03/2016
 Adham Beyki, odinay@gmail.com
+
+NOTE
+    The hyperparam resampling is just an approximate as the conditional distirbution of
+    Z isn't a DP. We just use it to approximate the hyperparams and then set it to false
 =#
 
 
@@ -102,7 +106,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
         KK_list = zeros(Int, n_samples)
         KK_dict = Dict{Int, Vector{Vector{Int}}}()
     else
-        n_samples_old = length(KK_list)        
+        n_samples_old = length(KK_list)
         KK_list = vcat(KK_list, zeros(Int, n_samples))
     end
 
@@ -160,7 +164,9 @@ function RCRP_gibbs_sampler!{T1, T2}(
         println(@sprintf("iteration: %d, KK=%d, KK mode=%d, aa=%.2f, time=%.2f, likelihood=%.2f", iteration, rcrp.KK,
             indmax(hist(KK_list, 0.:maximum(KK_list)+0.5)[2]), rcrp.aa[1], elapsed_time, log_likelihood))
 
-
+        if iteration > n_burnin
+            sample_hyperparam = false
+        end
 
         ##########################
         ##     first epoch      ##
@@ -310,10 +316,10 @@ function RCRP_gibbs_sampler!{T1, T2}(
                     for tt_ = tt+1:TT
                         idx = find(x -> x==kk, zz[tt_])
                         zz[tt_][idx] = rcrp.KK+1
-                        
+
                         for idid in idx
                             delitem!(components[kk], xx[tt_][idid])
-                            additem!(components[rcrp.KK+1], xx[tt_][idid])                            
+                            additem!(components[rcrp.KK+1], xx[tt_][idid])
                         end
 
                         nn[tt_, rcrp.KK+1] = nn[tt_, kk]

@@ -4,6 +4,10 @@ RCRF.jl
 Adham Beyki, odinay@gmail.com
 22/03/2016
 
+NOTE
+    The hyperparam resampling is just an approximate as the conditional distirbution of
+    Z isn't a DP. We just use it to approximate the hyperparams and then set it to false
+
 =#
 
 ####################################################
@@ -218,6 +222,10 @@ function RCRF_gibbs_sampler!{T1, T2}(
         end
         println(@sprintf("iteration: %d, KK=%d, KK mode=%d, aa=%.2f, gg=%.2f, time=%.2f, likelihood=%.2f", iteration,
             rcrf.KK, indmax(hist(KK_list, 0.:maximum(KK_list)+0.5)[2]), rcrf.aa[1], rcrf.gg[1], elapsed_time, log_likelihood))
+
+        if iteration > n_burnins
+            sample_hyperparam = false
+        end
 
         #############################
         ##         epoch 1         ##
