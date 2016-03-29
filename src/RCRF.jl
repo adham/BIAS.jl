@@ -288,7 +288,7 @@ function RCRF_gibbs_sampler!{T1, T2}(
                     kk = kjt[tt][jj][tbl]
                     pp[tbl] = log(njt[tt][jj][tbl]) + logpredictive(components[kk], xx[tt][jj][ii])
                 end
-                pp[tbl+1] = log(rcrf.aa[tt]) + logpredictive(rcrf.component, xx[tt][jj][ii])
+                pp[n_tbls+1] = log(rcrf.aa[tt]) + logpredictive(rcrf.component, xx[tt][jj][ii])
 
 
                 lognormalize!(pp)
@@ -518,7 +518,7 @@ function RCRF_gibbs_sampler!{T1, T2}(
                         kk = kjt[tt][jj][tbl]
                         pp[tbl] = log(njt[tt][jj][tbl]) + logpredictive(components[kk], xx[tt][jj][ii])
                     end
-                    pp[tbl+1] = log(rcrf.aa[tt]) + logpredictive(rcrf.component, xx[tt][jj][ii])
+                    pp[n_tbls+1] = log(rcrf.aa[tt]) + logpredictive(rcrf.component, xx[tt][jj][ii])
 
 
                     lognormalize!(pp)
@@ -747,7 +747,7 @@ function RCRF_gibbs_sampler!{T1, T2}(
                     kk = kjt[tt][jj][tbl]
                     pp[tbl] = log(njt[tt][jj][tbl]) + logpredictive(components[kk], xx[tt][jj][ii])
                 end
-                pp[tbl+1] = log(rcrf.aa[tt]) + logpredictive(rcrf.component, xx[tt][jj][ii])
+                pp[n_tbls+1] = log(rcrf.aa[tt]) + logpredictive(rcrf.component, xx[tt][jj][ii])
 
 
                 lognormalize!(pp)
