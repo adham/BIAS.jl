@@ -468,6 +468,8 @@ function CRF_gibbs_sampler!{T1, T2}(
 
         log_likelihood = 0.0
 
+        tic()
+
 
 
         ######################################
@@ -646,6 +648,14 @@ function CRF_gibbs_sampler!{T1, T2}(
             sample_hyperparam!(hdp, n_group_j, m, n_internals)
         end
 
+        for jj = 1:n_groups
+            for ii = 1:n_group_j[jj]
+            log_likelihood += logpredictive(components[zz[jj][ii]], xx[jj][ii])
+            end
+        end
+
+        elapsed_time = toq()
+
 
 
 
@@ -663,7 +673,7 @@ function CRF_gibbs_sampler!{T1, T2}(
 
     end # iteration
 
-    sample_n = n_sampels_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
+    sample_n = n_sampels_old + convert(Int, (n_iterations-n_burnins)/(n_lags+1))
     KK_list[sample_n] = hdp.KK
     crf_sample = CRFSample(deepcopy(tji), deepcopy(njt), deepcopy(kjt), deepcopy(zz))
     KK_dict[hdp.KK] = crf_sample
