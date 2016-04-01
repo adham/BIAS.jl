@@ -164,7 +164,7 @@ function RCRP_gibbs_sampler!{T1, T2}(
         println(@sprintf("iteration: %d, KK=%d, KK mode=%d, aa=%.2f, time=%.2f, likelihood=%.2f", iteration, rcrp.KK,
             indmax(hist(KK_list, 0.:maximum(KK_list)+0.5)[2]), rcrp.aa[1], elapsed_time, log_likelihood))
 
-        if iteration > n_burnin
+        if iteration > n_burnins
             sample_hyperparam = false
         end
 
