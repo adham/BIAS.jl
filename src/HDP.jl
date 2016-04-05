@@ -76,6 +76,7 @@ function storesample{T}(
 end
 
 
+#=
 function storesample{T}(
     hdp::HDP{T},
     KK_list::Vector{Int},
@@ -96,6 +97,28 @@ function storesample{T}(
         "KK_dict", KK_dict,
         "n_burnins", n_burnins, "n_lags", n_lags, "sample_n", sample_n)
 end
+=#
+function storesample{T}(
+    hdp::HDP{T},
+    KK_list::Vector{Int},
+    KK_dict::Dict{Int, Vector{Vector{Int}}},
+    n_burnins::Int, n_lags::Int, sample_n::Int,
+    filename::ASCIIString)
+
+    println("\nstoring on disk...\n")
+    if endswith(filename, "_")
+        dummy_filename = string(filename, sample_n, ".jld")
+    else
+        dummy_filename = string(filename, "_", sample_n, ".jld")
+    end
+
+    JLD.save(dummy_filename,
+        "hdp", hdp,
+        "KK_list", KK_list,
+        "KK_dict", KK_dict,
+        "n_burnins", n_burnins, "n_lags", n_lags, "sample_n", sample_n)
+end
+
 
 
 function sample_hyperparam!(hdp::HDP, n_group_j::Vector{Int}, m::Int)
@@ -384,7 +407,7 @@ function CRF_gibbs_sampler!{T1, T2}(
     sample_hyperparam::Bool=true, n_internals::Int=10,
     store_every::Int=100, filename::ASCIIString="HDP_results_",
     KK_list::Vector{Int}=Int[],
-    KK_dict::Dict{Int, CRFSample}=Dict{Int, CRFSample}())
+    KK_dict::Dict{Int, Vector{Vector{Int}}}=Dict{Int, Vector{Vector{Int}}}())
 
 
     # constructing the components
@@ -395,7 +418,7 @@ function CRF_gibbs_sampler!{T1, T2}(
 
     n_iterations = n_burnins + (n_samples)*(n_lags+1)
     n_groups     = length(xx)
-    n_group_j    = [length(zz[jj]) for jj = 1:n_groups]
+    n_group_j    = Int[length(zz[jj]) for jj = 1:n_groups]
     tji          = Array(Vector{Int}, n_groups)     # tji[jj][ii] represents the table that customer ii in restaurant jj sits at
     njt          = Array(Vector{Int}, n_groups)     # njt[jj][tbl] represents the number of customers sitting at table tbl in restaurant jj
     kjt          = Array(Vector{Int}, n_groups)     # kjt[jj][tbl] represents the dish being served at table tbl at restaurant jj
@@ -406,7 +429,8 @@ function CRF_gibbs_sampler!{T1, T2}(
     if length(KK_list) == 0
         n_sampels_old = 0
         KK_list = zeros(Int, n_samples)
-        KK_dict = Dict{Int, CRFSample}()
+        # KK_dict = Dict{Int, CRFSample}()
+        KK_dict = Dict{Int, Vector{Vector{Int}}}()
     else
         n_sampels_old = length(KK_list)
         KK_list = vcat(KK_list, zeros(Int, n_samples))
@@ -663,8 +687,9 @@ function CRF_gibbs_sampler!{T1, T2}(
         if (iteration-n_burnins) % (n_lags+1) == 0 &&  iteration > n_burnins
             sample_n = n_sampels_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
             KK_list[sample_n] = hdp.KK
-            crf_sample = CRFSample(deepcopy(tji), deepcopy(njt), deepcopy(kjt), deepcopy(zz))
-            KK_dict[hdp.KK] = crf_sample
+            # crf_sample = CRFSample(deepcopy(tji), deepcopy(njt), deepcopy(kjt), deepcopy(zz))
+            # KK_dict[hdp.KK] = crf_sample
+            KK_dict[hdp.KK] = deepcopy(zz)
             if sample_n % store_every == 0
                 storesample(hdp, KK_list, KK_dict, n_burnins, n_lags, sample_n, filename)
             end
@@ -675,8 +700,9 @@ function CRF_gibbs_sampler!{T1, T2}(
 
     sample_n = n_sampels_old + convert(Int, (n_iterations-n_burnins)/(n_lags+1))
     KK_list[sample_n] = hdp.KK
-    crf_sample = CRFSample(deepcopy(tji), deepcopy(njt), deepcopy(kjt), deepcopy(zz))
-    KK_dict[hdp.KK] = crf_sample
+    # crf_sample = CRFSample(deepcopy(tji), deepcopy(njt), deepcopy(kjt), deepcopy(zz))
+    # KK_dict[hdp.KK] = crf_sample
+    KK_dict[hdp.KK] = deepcopy(zz)
     storesample(hdp, KK_list, KK_dict, n_burnins, n_lags, sample_n, filename)
 
     KK_list, KK_dict
@@ -711,8 +737,13 @@ function posterior{T1, T2}(
     pij = nn + hdp.aa
     pij = pij ./ sum(pij, 1)
 
+    pos_components = Array(typeof(posterior(hdp.component)), KK)
+    for kk = 1:KK
+        pos_components[kk] = posterior(components[kk])
+    end
 
-    [posterior(components[kk]) for kk =1:KK], nn, pij
+
+    pos_components, KK_dict[KK], nn, pij
 end
 
 

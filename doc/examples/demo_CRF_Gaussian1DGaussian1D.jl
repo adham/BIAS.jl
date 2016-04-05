@@ -71,4 +71,4 @@ KK_list, KK_dict = CRF_gibbs_sampler!(hdp, xx, zz, n_burnins, n_lags, n_samples,
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
 
-pos_components, tji, njt, kjt, zz, nn, mm, pij = posterior(hdp, xx, KK_dict, candidate_KK, join_tables)
+pos_components, zz, nn, pij = posterior(hdp, xx, KK_dict, candidate_KK)

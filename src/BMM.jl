@@ -25,7 +25,6 @@ end
 
 function storesample{T}(
     bmm::BMM{T},
-    components::Vector{T},
     zz::Vector{Int},
     n_burnins::Int, n_lags::Int, sample_n::Int,
     filename::ASCIIString)
@@ -39,7 +38,6 @@ function storesample{T}(
 
     JLD.save(dummy_filename,
         "bmm", bmm,
-        "components", components,
         "zz", zz,
         "n_burnins", n_burnins, "n_lags", n_lags, "sample_n", sample_n)
 end
@@ -122,13 +120,13 @@ function collapsed_gibbs_sampler!{T1, T2}(
             sample_n = convert(Int, (iteration-n_burnins)/(n_lags+1))
 
             if sample_n % store_every == 0
-                storesample(bmm, components, zz, n_burnins, n_lags, sample_n, filename)
+                storesample(bmm, zz, n_burnins, n_lags, sample_n, filename)
             end
         end
     end # iteration
 
     sample_n = convert(Int, (n_iterations-n_burnins)/(n_lags+1))
-    storesample(bmm, components, zz, n_burnins, n_lags, sample_n, filename)
+    storesample(bmm, zz, n_burnins, n_lags, sample_n, filename)
 end
 
 

@@ -67,9 +67,9 @@ for tt = 1:TT
     end
 end
 
-n_burnins   = 100
+n_burnins   = 10
 n_lags      = 1
-n_samples   = 100
+n_samples   = 10
 sample_hyperparam = true
 n_internals = 10
 store_every = 100000
@@ -82,4 +82,4 @@ KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
 
 
-pos_components, njt, kjt, nn, mm = posterior(rcrf, xx, KK_dict, candidate_KK)
+pos_components, zz, nn = posterior(rcrf, xx, KK_dict, candidate_KK)

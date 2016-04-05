@@ -56,7 +56,7 @@ end
 function storesample{T}(
     rcrf::RCRF{T},
     KK_list::Vector{Int},
-    KK_dict::Dict{Int, RCRFSample},
+    KK_dict::Dict{Int, Vector{Vector{Vector{Int}}}},
     n_burnins::Int, n_lags::Int, sample_n::Int,
     filename::ASCIIString)
 
@@ -129,7 +129,7 @@ function RCRF_gibbs_sampler!{T1, T2}(
     store_every::Int=100, filename::ASCIIString="RCRF_results_",
     join_tables::Bool=true,
     KK_list::Vector{Int}=Int[],
-    KK_dict::Dict{Int, RCRFSample}=Dict{Int, RCRFSample}())
+    KK_dict::Dict{Int, Vector{Vector{Vector{Int}}}}=Dict{Int, Vector{Vector{Vector{Int}}}}())
 
 
     n_iterations = n_burnins + (n_samples)*(n_lags+1)
@@ -160,7 +160,7 @@ function RCRF_gibbs_sampler!{T1, T2}(
     if length(KK_list) == 0
         n_samples_old = 0
         KK_list = zeros(Int, n_samples)
-        KK_dict = Dict{Int, RCRFSample}()
+        KK_dict = Dict{Int, Vector{Vector{Vector{Int}}}}()
     else
         n_samples_old = length(KK_list)
         KK_list = vcat(KK_list, zeros(Int, n_samples))
@@ -906,8 +906,9 @@ function RCRF_gibbs_sampler!{T1, T2}(
         if (iteration-n_burnins) % (n_lags+1) == 0 && iteration > n_burnins
             sample_n = n_samples_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
             KK_list[sample_n] = rcrf.KK
-            rcrf_sample = RCRFSample(deepcopy(njt), deepcopy(kjt), deepcopy(zz))
-            KK_dict[rcrf.KK] = rcrf_sample
+            # rcrf_sample = RCRFSample(deepcopy(njt), deepcopy(kjt), deepcopy(zz))
+            # KK_dict[rcrf.KK] = rcrf_sample
+            KK_dict[rcrf.KK] = deepcopy(zz)
             if (sample_n % store_every) == 0
                 storesample(rcrf, KK_list, KK_dict, n_burnins, n_lags, sample_n, filename)
             end
@@ -927,14 +928,63 @@ function RCRF_gibbs_sampler!{T1, T2}(
 
     sample_n = n_samples_old +  convert(Int, (n_iterations-n_burnins)/(n_lags+1))
     KK_list[sample_n] = rcrf.KK
-    rcrf_sample = RCRFSample(deepcopy(njt), deepcopy(kjt), deepcopy(zz))
-    KK_dict[rcrf.KK] = rcrf_sample
+    # rcrf_sample = RCRFSample(deepcopy(njt), deepcopy(kjt), deepcopy(zz))
+    # _dict[rcrf.KK] = rcrf_sample
+    KK_dict[rcrf.KK] = deepcopy(zz)
     storesample(rcrf, KK_list, KK_dict, n_burnins, n_lags, sample_n, filename)
 
     KK_list, KK_dict
 
 end # RCRF_gibbs_sampler!()
 
+
+
+function posterior{T1, T2}(
+    rcrf::RCRF{T1},
+    xx::Vector{Vector{Vector{T2}}},
+    KK_dict::Dict{Int, Vector{Vector{Vector{Int}}}},
+    KK::Int)
+
+
+    TT        = length(xx)
+    n_groups  = [length(xx[tt]) for tt=1:TT]
+    n_group_j = Array(Vector{Int}, TT)
+    nn        = Array(Matrix{Int}, TT)
+    zz        = KK_dict[KK]
+
+
+    for tt = 1:TT
+        n_group_j[tt] = zeros(Int, n_groups[tt])
+        for jj = 1:n_groups[tt]
+            n_group_j[tt][jj] = length(xx[tt][jj])
+        end
+    end
+
+
+    components = Array(typeof(rcrf.component), KK)
+    for kk = 1:KK
+        components[kk] = deepcopy(rcrf.component)
+    end
+
+
+    for tt = 1:TT
+        nn[tt] = zeros(Int, n_groups[tt], KK)
+        for jj = 1:n_groups[tt]
+            for ii = 1:n_group_j[tt][jj]
+                kk = zz[tt][jj][ii]
+                nn[tt][jj, kk] += 1
+                additem!(components[kk], xx[tt][jj][ii])
+            end
+        end
+    end
+
+    pos_components = Array(typeof(posterior(rcrf.component)), KK)
+    for kk = 1:KK
+        pos_components[kk] = posterior(components[kk])
+    end
+
+    pos_components, KK_dict[KK], nn
+end
 
 
 

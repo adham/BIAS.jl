@@ -44,7 +44,6 @@ end
 
 function storesample{T}(
         lda::LDA{T},
-        components::Vector{T},
         zz::Vector{Vector{Int}},
         i::Int,
         iteration::Int,
@@ -60,7 +59,6 @@ function storesample{T}(
     JLD.save(dummy_filename,
         "n_smaple", i,
         "lda", lda,
-        "components", components,
         "zz", zz,
         "iteration", iteration)
 end
@@ -140,13 +138,13 @@ function collapsed_gibbs_sampler!{T1, T2}(
             # sample should be saved here
 
             if i % store_every == 0
-                storesample(lda, components, zz, i, iteration, filename)
+                storesample(lda, zz, i, iteration, filename)
             end
         end
     end # iteration
 
     i = convert(Int, (n_iterations-n_burnins)/(n_lags+1))
-    storesample(lda, components, zz, i, iteration, filename)
+    storesample(lda, zz, i, n_iterations, filename)
 end
 
 
